@@ -1,20 +1,20 @@
 import sys
 from math import ceil
 
-# from internal_modules.SpotifyTracksFromPlaylist import get_tracks
-# from internal_modules.SpotipyAPIClient import initialize_api
+from internal_modules.SpotifyTracksFromPlaylist import get_tracks
+from internal_modules.SpotipyAPIClient import initialize_api
 
 # sp = initialize_api(scope='playlist-read-private playlist-modify-public playlist-modify-private')
-# user_id = input('Input User ID: ')
+user_id = input('Input User ID: ')
 
-# ref_playlist = 'https://open.spotify.com/playlist/5qxu9APTbnKyWzhJjuMzBS?si=15e677b542c846f5'
-# ref_tracks, q , w = get_tracks(ref_playlist)
-# ref_ids = []
-# for track in ref_tracks:
-#     ref_ids.append(track['id'])
+ref_playlist = 'https://open.spotify.com/playlist/5qxu9APTbnKyWzhJjuMzBS?si=e99ac59e39f643dc'
+ref_tracks, _ , _ = get_tracks(ref_playlist)
+ref_ids = []
+for track in ref_tracks:
+    ref_ids.append(track['id'])
 
-with open("tot_ids.txt", "r") as f:
-    ref_ids = eval(f.read())
+# with open("tot_ids.txt", "r") as f:
+#     ref_ids = eval(f.read())
 
 
 def decimal_to_binary_padded(decimal, pad):
@@ -32,6 +32,9 @@ for idx, id in enumerate(ref_ids[:8192]):
     encode_dict[str(decimal_to_binary_padded(idx, 13))] = id
 for idx, id in enumerate(ref_ids[-2:]):
     encode_dict[str(idx)] = id
+
+with open('enc-dict.txt', 'w') as f:
+    f.write(str(encode_dict))
 
 
 def print_progress_bar(iteration, total, prefix="", suffix="", length=50, fill="█"):
@@ -60,12 +63,11 @@ def batch(iterable, batch_size):
         yield iterable[i : i + batch_size]
 
 
-# file = 'smol.txt'
-file = 'yo.txt'
+file = 'smol.txt'
+# file = 'yo.txt'
 # file = 'file-encode-playlist.py'
-# file = r"C:\Users\rashkarile\Desktop\GitHub Desktop.lnk"
 filename = file
-with open(file, "rb") as f:
+with open(file, "rb") as f: # type: ignore
     file_bytes = list(f.read())
 
 file_binary: list = []
@@ -78,25 +80,34 @@ song_count = (len(file_binary) // 13) + (len(file_binary) % 13)
 
 playlist_count = ceil(song_count / 9_975)
 
-print(song_count)
-print(playlist_count)
+print('------')
+print(f'Binary len: {len(file_binary)}')
+print(f'Song count: {song_count}')
+print(f'Playlist count: {playlist_count}')
 
+playlist_ids:list = []
+    
+playlist_track_ids = []
+for playlist_data in batch(file_binary, 9_975 * 13):
 
-playlist_ids: list = []
-data_batched_for_playlists = batch(file_binary, 9_975)
-for i in range(playlist_count):
-    # playlist = sp.user_playlist_create(user=user_id, name=f'{filename} Playlist {i + 1} of {playlist_count}')
-    # playlist_ids.append(playlist['id'])
+    id = ''
 
-    playlist_data_batch = list(data_batched_for_playlists)[i]
-    track_ids = []
-    for idx, track_data_batch in enumerate(batch(playlist_data_batch, 13)):
-        if len(track_data_batch) == 13:
-            track_ids.append(encode_dict[str(track_data_batch)])
+    track_ids: list = []
+
+    for track_data in batch(playlist_data, 13):
+
+        if len(track_data) == 13:
+            track_id = encode_dict[str(track_data)]
+            track_ids.append(track_id)
         else:
-            for byte in track_data_batch:
-                track_ids.append(encode_dict[str(byte)])
+            for byte in track_data:
+                track_id = encode_dict[str(byte)]
+                track_ids.append(track_id)
 
-    for track_batch in batch(track_ids, 100):
-        # sp.user_playlist_add_tracks(user=user_id, playlist_id=playlist['id'], tracks=track_batch)
-        print(f'{track_batch}\n')
+    # print(track_ids)
+    # print(len(track_ids))
+    playlist_track_ids.append(track_ids)
+
+for i in playlist_track_ids:
+    print(len(i))
+    
