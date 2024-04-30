@@ -3,8 +3,8 @@ from internal_modules.SpotifyTracksFromPlaylist import get_tracks
 
 sp = initialize_api(scope='playlist-read-private playlist-modify-public playlist-modify-private')
 
-
-user_id = '31u2bml5437sajwgpz6brd4j6cva'
+user_id = input('Paste a link to your user profile: ')
+# user_id = '31u2bml5437sajwgpz6brd4j6cva'
 x = sp.user_playlist_create(user=user_id, name='ref test')
 
 def batch(iterable, batch_size):
