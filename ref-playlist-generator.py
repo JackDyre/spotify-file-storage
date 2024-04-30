@@ -17,10 +17,7 @@ def batch(iterable, batch_size):
 with open('tot_ids.txt', 'r') as f:
     ids = eval(f.read())
 
-ids_s = ids[:100]
-
 for batch_ids in batch(ids, 100):
-    # Call the API function with the current batch of IDs
     sp.user_playlist_add_tracks(user=user_id, playlist_id=x['id'], tracks=batch_ids)
 
 # with open('test.txt', 'w') as f:
