@@ -1,6 +1,38 @@
 import spotipy # type: ignore
 from spotipy.oauth2 import SpotifyOAuth # type: ignore
 import time
+import sys
+from math import ceil
+import os
+
+def print_progress_bar(iteration, total, prefix="", suffix="", length=50, fill="█"):
+    """
+    Call in a loop to create terminal progress bar.
+    :param iteration: current iteration (Int)
+    :param total: total iterations (Int)
+    :param prefix: prefix string (Str)
+    :param suffix: suffix string (Str)
+    :param length: character length of bar (Int)
+    :param fill: bar fill character (Str)
+    :return: None
+    """
+    percent = ("{0:.1f}").format(100 * (iteration / float(total)))
+    filled_length = int(length * iteration // total)
+    bar = fill * filled_length + "-" * (length - filled_length)
+    sys.stdout.write("\r%s |%s| %s%% %s" % (prefix, bar, percent, suffix)),
+    sys.stdout.flush()
+    if iteration == total:
+        sys.stdout.write("\n")
+        sys.stdout.flush()
+
+def decimal_to_binary_padded(decimal, pad):
+    binary = ""
+    while decimal > 0:
+        remainder = decimal % 2
+        binary = str(remainder) + binary
+        decimal = decimal // 2
+    binary = binary.zfill(pad)
+    return [int(bit) for bit in binary]
 
 def create_client() -> spotipy.Spotify:
     sp: spotipy.Spotify = spotipy.Spotify(
@@ -113,12 +145,68 @@ def create_playlist(name):
     print('create request recieved\n---------')
     return playlist
     
-# def create_ref_playlist():
-#     with open('8194-ids.txt', 'r') as f:
-#         ref_ids = eval(f.read())
+def create_ref_playlist():
+    with open('8194-ids.txt', 'r') as f:
+        ref_ids = eval(f.read())
+
+        print(type(ref_ids[0]))
     
-#     ref_playlist = create_playlist('reference bit dictionary')
-#     add_tracks_to_playlist(ref_playlist, ref_ids)
+    ref_playlist = create_playlist('reference bit dictionary')
+
+    add_tracks_to_playlist(ref_playlist['id'], ref_ids)
+
+    return ref_playlist
+
+def encode_file(file, ref_ids) -> None:
+    filename = os.path.basename(file)
+    with open(file, "rb") as f: # type: ignore
+        file_bytes = list(f.read())
+    
+    file_binary: list = []
+    for idx, byte in enumerate(file_bytes):
+        print_progress_bar(idx, len(file_bytes))
+        file_binary.extend(decimal_to_binary_padded(byte, 8))
+    print(file_binary)
+
+    encode_dict = {}
+    for idx, id in enumerate(ref_ids[:8192]):
+        encode_dict[str(decimal_to_binary_padded(idx, 13))] = id
+    for idx, id in enumerate(ref_ids[-2:]):
+        encode_dict[str(idx)] = id
+
+    with open('enc-dict.txt', 'w') as f:
+        f.write(str(encode_dict))
+    
+    song_count = (len(file_binary) // 13) + (len(file_binary) % 13)
+    playlist_count = ceil(song_count / 9_975)
+
+    playlist_ids: list = []
+    playlist_iter = 0
+    for playlist_data in batch(file_binary, 9_975 * 13):
+
+        track_ids: list = []
+
+        playlist_iter += 1
+        playlist_id = create_playlist(f'{filename}: Playlist {playlist_iter} of {playlist_count}')['id']
+        playlist_ids.append(playlist_id)
+
+        for track_data in batch(playlist_data, 13):
+            if len(track_data) == 13:
+                track_ids.append(encode_dict[str(track_data)])
+            else:
+                for byte in track_data:
+                    track_ids.append(encode_dict[str(byte)])
+    
+        add_tracks_to_playlist(playlist_id, track_ids)
+    
+        print(song_count)
+        print(len(track_ids))
+        print(playlist_count)
+
 
 if __name__ == '__main__':
-    pass
+    # x = create_ref_playlist()
+    with open('8194-ids.txt', 'r') as f:
+            ref_ids = eval(f.read())
+    encode_file('small text file.txt', ref_ids)
+    
