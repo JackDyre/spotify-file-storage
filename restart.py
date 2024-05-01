@@ -24,11 +24,13 @@ class APIRequests:
         delta_time = time.time() - self.recent_request
         if delta_time > 1:
             try:
-                return self.sp.user_playlist_tracks(self.user_id, playlist, offset=offset, limit=1)
+                return self.sp.user_playlist_tracks(self.user_id, playlist, offset=offset, limit=100)
             except spotipy.exceptions.SpotifyException as e:
                 if e.http_status == 429:
-                    print(f'retrying: waiting {2 ** retries} seconds...')
-                    time.sleep(2 ** retries)
+                    print(e)
+                    print(e.headers.get('Retry-After'))
+                    print(f'retrying: waiting {(2 ** retries) * 4} seconds...')
+                    time.sleep((2 ** retries) * 4)
                     retries += 1
                     return self.get_playlist_tracks(playlist, offset, retries)
                 else:
