@@ -5,6 +5,8 @@ from math import ceil
 
 import spotipy  # type: ignore
 from spotipy.oauth2 import SpotifyOAuth  # type: ignore
+from spotipy.oauth2 import SpotifyClientCredentials # type: ignore
+
 
 
 def print_progress_bar(iteration, total, prefix="", suffix="", length=50, fill="█"):
@@ -39,8 +41,30 @@ def decimal_to_binary_padded(decimal, pad):
 
 def create_client() -> spotipy.Spotify:
 
-    client_id = input('Client ID?\n')
-    client_secret = input('Client Secret?\n')
+    try:
+        with open('api-credentials.txt', 'r') as f:
+            api_dict = eval(f.read())
+        client_id = api_dict['cl-id']
+        client_secret = api_dict['cl-secr']
+    except:
+        client_id = input('Client ID?\n')
+        client_secret = input('Client Secret?\n')
+
+    with open('api-credentials.txt', 'w') as f:
+            f.write(str({'cl-id': client_id, 'cl-secr': client_secret}))
+
+    try:
+        spotipy.Spotify(
+            auth_manager=SpotifyClientCredentials(
+                client_id=client_id,
+                client_secret=client_secret
+                )
+            )
+    except:
+        os.remove('api-credentials.txt')
+        print('\n\nInvalid API info')
+        sys.exit()
+
 
     sp: spotipy.Spotify = spotipy.Spotify(
         retries=0,
@@ -270,8 +294,3 @@ def decode_file(header_playlist_id, ref_ids_input = None):
     return filename
 
 
-
-if __name__ == '__main__':    
-    x = encode_file(input('File path?\n'))
-
-    decode_file(x)
