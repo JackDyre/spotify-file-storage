@@ -266,6 +266,8 @@ def decode_file(header_playlist_id, ref_ids_input = None):
 
     with open(filename, 'wb') as f:
         f.write(bytes(file_bytes))
+    
+    return filename
 
 
 
