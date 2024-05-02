@@ -37,8 +37,11 @@ def get_file_path(dir_input = None):
 
 
 if __name__ == '__main__':
-    file_path = get_file_path()
-    print(file_path)
-    x = encode_file(file_path)
+    
+    x = None
+    while x is None:
+        file_path = get_file_path()
+        print(file_path)
+        x = encode_file(file_path)
     pyperclip.copy(x)
-    print('Header playlist ID copied to clipboard')
+    print('\nHeader playlist ID copied to clipboard')

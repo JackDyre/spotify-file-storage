@@ -195,7 +195,7 @@ def create_ref_playlist():
     return ref_playlist
 
 
-def encode_file(file, ref_ids_input=None) -> str:
+def encode_file(file, ref_ids_input=None) -> str | None:
     with open("8194-ids.txt", "r") as f:
         ref_ids = ref_ids_input or eval(f.read())
 
@@ -221,7 +221,7 @@ def encode_file(file, ref_ids_input=None) -> str:
 
     continue_check = input('Confirm? (Y/N) ')
     if not (continue_check == 'Y' or continue_check == 'y'):
-        sys.exit()
+        return None
 
     print(f"\n\nDumping {song_count} tracks into {playlist_count} playlists...\n\n")
 

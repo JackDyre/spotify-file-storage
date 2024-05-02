@@ -1,9 +1,7 @@
-.cache
-
+# Directories
 __pycache__/
-
-
 .mypy_cache/
 
-
+# Files
 api-credentials.txt
+.cache
