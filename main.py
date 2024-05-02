@@ -217,6 +217,12 @@ def encode_file(file, ref_ids_input=None) -> str:
     song_count = (len(file_binary) // 13) + (len(file_binary) % 13)
     playlist_count = ceil(song_count / 9_975)
 
+    print(f'\n\nFile: {filename}\nRequires ~{ceil(song_count // 100)} API requests\nTime estimate: {round(ceil(song_count // 100) * .75, 0)}sec')
+
+    continue_check = input('Confirm? (Y/N) ')
+    if not (continue_check == 'Y' or continue_check == 'y'):
+        sys.exit()
+
     print(f"\n\nDumping {song_count} tracks into {playlist_count} playlists...\n\n")
 
     playlist_ids: list = []
@@ -310,3 +316,6 @@ def decode_file(header_playlist_id, ref_ids_input=None):
         f.write(bytes(file_bytes))
 
     return filename
+
+if __name__ == '__main__':
+    pass
