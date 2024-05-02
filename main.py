@@ -290,10 +290,14 @@ def decode_file(header_playlist_id, ref_ids_input=None):
     filename = playlist_ids.pop(0)
 
     total_tracks = []
+    playlist_iter = 0
     for playlist in playlist_ids:
+        playlist_iter += 1
+        print(f'Fetching tracks from playlist {playlist_iter} of {len(playlist_ids)}...')
         tracks = get_playlist_tracks(playlist)
         total_tracks.extend(tracks)
 
+    print('Reconstructing file...')
     file_binary = []
     for track in total_tracks:
         file_binary.extend(decode_dict[track["id"]])
