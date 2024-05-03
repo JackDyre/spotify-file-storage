@@ -5,8 +5,7 @@ from math import ceil
 import sqlite3
 
 import spotipy  # type: ignore
-from spotipy.oauth2 import SpotifyClientCredentials  # type: ignore
-from spotipy.oauth2 import SpotifyOAuth  # type: ignore
+from spotipy.oauth2 import SpotifyClientCredentials, SpotifyOAuth  # type: ignore
 
 
 def print_progress_bar(iteration, total):
@@ -20,10 +19,10 @@ def print_progress_bar(iteration, total):
     :param fill: bar fill character (Str)
     :return: None
     """
-    prefix=""
-    suffix=""
-    length=50
-    fill="█"
+    prefix = ""
+    suffix = ""
+    length = 50
+    fill = "█"
 
     percent = ("{0:.1f}").format(100 * (iteration / float(total)))
     filled_length = int(length * iteration // total)
@@ -94,78 +93,48 @@ class APIRequests:
         self.user_id: str = self.sp.current_user()["id"]
 
     def get_playlist_tracks(self, playlist: str, offset: int, retries: int = 0):
+        return self.send_request(
+            request=self.sp.user_playlist_tracks,
+            user=self.user_id,
+            playlist_id=playlist,
+            offset=offset,
+            market="US",
+        )
+
+    def add_tracks_to_playlist(self, playlist: str, tracks: list):
+        return self.send_request(
+            request=self.sp.user_playlist_add_tracks,
+            user=self.user_id,
+            playlist_id=playlist,
+            tracks=tracks,
+        )
+
+    def create_playlist(self, name: str):
+        return self.send_request(
+            request=self.sp.user_playlist_create, user=self.user_id, name=name
+        )
+
+    def send_request(self, request, **kwargs):
         delta_time = time.time() - self.recent_request
-        if delta_time > 1:
-            try:
-                self.recent_request = time.time()
-                return self.sp.user_playlist_tracks(
-                    self.user_id, playlist, offset=offset, market="US"
-                )
-            except spotipy.exceptions.SpotifyException as e:
-                if e.http_status == 429:
-                    print(e)
-                    print(e.headers.get("Retry-After"))
-                    print(f"retrying: waiting {(2 ** retries) * 4} seconds...")
-                    time.sleep((2**retries) * 4)
-                    retries += 1
-                    return self.get_playlist_tracks(playlist, offset, retries)
-                else:
-                    raise e
-        else:
+        if delta_time < 1:
             time.sleep(1 - delta_time)
-            return self.get_playlist_tracks(playlist, offset, 0)
-
-    def add_tracks_to_playlist(self, playlist: str, tracks: list, retries: int = 0):
-        delta_time = time.time() - self.recent_request
-        if delta_time > 1:
-            try:
-                self.recent_request = time.time()
-                return self.sp.user_playlist_add_tracks(
-                    user=self.user_id, playlist_id=playlist, tracks=tracks
-                )
-            except spotipy.exceptions.SpotifyException as e:
-                if e.http_status == 429:
-                    print(e)
-                    print(e.headers.get("Retry-After"))
-                    print(f"retrying: waiting {(2 ** retries) * 4} seconds...")
-                    time.sleep((2**retries) * 4)
-                    retries += 1
-                    return self.add_tracks_to_playlist(playlist, tracks, retries)
-                else:
-                    raise e
-        else:
-            time.sleep(1 - delta_time)
-            return self.add_tracks_to_playlist(playlist, tracks, 0)
-
-    def create_playlist(self, name: str, retries: int = 0):
-        delta_time = time.time() - self.recent_request
-        if delta_time > 1:
-            try:
-                self.recent_request = time.time()
-                return self.sp.user_playlist_create(self.user_id, name)
-            except spotipy.exceptions.SpotifyException as e:
-                if e.http_status == 429:
-                    print(e)
-                    print(e.headers.get("Retry-After"))
-                    print(f"retrying: waiting {(2 ** retries) * 4} seconds...")
-                    time.sleep((2**retries) * 4)
-                    retries += 1
-                    return self.create_playlist(name, retries)
-                else:
-                    raise e
-        else:
-            time.sleep(1 - delta_time)
-            return self.create_playlist(name, 0)
+        try:
+            request_output = request(**kwargs)
+            self.recent_request = time.time()
+            return request_output
+        except spotipy.exceptions.SpotifyException as e:
+            print(e)
+            return None
 
 
-api_client: APIRequests = APIRequests()
+api_request_manager: APIRequests = APIRequests()
 
 
 def get_playlist_tracks(playlist: str) -> list:
     offset: int = 0
     tracks: list = []
     while True:
-        track_batch = api_client.get_playlist_tracks(playlist, offset)
+        track_batch = api_request_manager.get_playlist_tracks(playlist, offset)
         offset += 100
         for track in track_batch["items"]:
             tracks.append(track["track"])
@@ -177,11 +146,11 @@ def get_playlist_tracks(playlist: str) -> list:
 
 def add_tracks_to_playlist(playlist, tracks):
     for track_batch in batch(tracks, 100):
-        api_client.add_tracks_to_playlist(playlist, track_batch)
+        api_request_manager.add_tracks_to_playlist(playlist, track_batch)
 
 
 def create_playlist(name):
-    playlist = api_client.create_playlist(name)
+    playlist = api_request_manager.create_playlist(name)
     return playlist
 
 
@@ -209,16 +178,18 @@ def encode_file(file, ref_ids_input=None) -> str | None:
         print_progress_bar(idx, len(file_bytes))
         file_binary.extend(decimal_to_binary_padded(byte, 8))
 
-    conn = sqlite3.connect('pad_13_lookup.db')
+    conn = sqlite3.connect("pad_13_lookup.db")
     cursor = conn.cursor()
 
     song_count = (len(file_binary) // 13) + (len(file_binary) % 13)
     playlist_count = ceil(song_count / 9_975)
 
-    print(f'\n\nFile: {filename}\nRequires ~{ceil(song_count // 100)} API requests\nTime estimate: {round(ceil(song_count // 100) * .75, 0)}sec')
+    print(
+        f"\n\nFile: {filename}\nRequires ~{ceil(song_count // 100)} API requests\nTime estimate: {round(ceil(song_count // 100) * .75, 0)}sec"
+    )
 
-    continue_check = input('Confirm? (Y/N) ')
-    if not (continue_check == 'Y' or continue_check == 'y'):
+    continue_check = input("Confirm? (Y/N) ")
+    if not (continue_check == "Y" or continue_check == "y"):
         return None
 
     print(f"\n\nDumping {song_count} tracks into {playlist_count} playlists...\n\n")
@@ -237,12 +208,16 @@ def encode_file(file, ref_ids_input=None) -> str | None:
 
         for track_data in batch(playlist_data, 13):
             if len(track_data) == 13:
-                cursor.execute("SELECT * FROM pad13_id_lookup WHERE binary = ?", (str(track_data),))
+                cursor.execute(
+                    "SELECT * FROM pad13_id_lookup WHERE binary = ?", (str(track_data),)
+                )
                 track_id = cursor.fetchall()
                 track_ids.append(track_id[0][1])
             else:
                 for byte in track_data:
-                    cursor.execute("SELECT * FROM pad13_id_lookup WHERE binary = ?", (str(byte),))
+                    cursor.execute(
+                        "SELECT * FROM pad13_id_lookup WHERE binary = ?", (str(byte),)
+                    )
                     track_id = cursor.fetchall()
                     track_ids.append(track_id[0][1])
 
@@ -250,7 +225,6 @@ def encode_file(file, ref_ids_input=None) -> str | None:
         print(f"Playlist size: {len(track_ids)}\n")
         add_tracks_to_playlist(playlist_id, track_ids)
 
-    
     header_playlist = create_playlist(f"{filename}: Header Playlist")["id"]
     header_string = "*".join([filename] + playlist_ids)
     header_bytes = list(header_string.encode("utf-8"))
@@ -262,19 +236,23 @@ def encode_file(file, ref_ids_input=None) -> str | None:
     header_track_ids: list = []
     for header_track_data in batch(header_binary, 13):
         if len(header_track_data) == 13:
-            cursor.execute("SELECT * FROM pad13_id_lookup WHERE binary = ?", (str(header_track_data),))
+            cursor.execute(
+                "SELECT * FROM pad13_id_lookup WHERE binary = ?",
+                (str(header_track_data),),
+            )
             track_id = cursor.fetchall()
             header_track_ids.append(track_id[0][1])
         else:
             for byte in header_track_data:
-                cursor.execute("SELECT * FROM pad13_id_lookup WHERE binary = ?", (str(byte),))
+                cursor.execute(
+                    "SELECT * FROM pad13_id_lookup WHERE binary = ?", (str(byte),)
+                )
                 track_id = cursor.fetchall()
                 header_track_ids.append(track_id[0][1])
 
     print(f"Dumping tracks to header playlist...")
     print(f"Header size: {len(header_track_ids)}")
     add_tracks_to_playlist(header_playlist, header_track_ids)
-
 
     cursor.close()
     conn.close()
@@ -309,11 +287,13 @@ def decode_file(header_playlist_id, destination, ref_ids_input=None):
     playlist_iter = 0
     for playlist in playlist_ids:
         playlist_iter += 1
-        print(f'Fetching tracks from playlist {playlist_iter} of {len(playlist_ids)}...')
+        print(
+            f"Fetching tracks from playlist {playlist_iter} of {len(playlist_ids)}..."
+        )
         tracks = get_playlist_tracks(playlist)
         total_tracks.extend(tracks)
 
-    print('Reconstructing file...')
+    print("Reconstructing file...")
     file_binary = []
     for track in total_tracks:
         file_binary.extend(decode_dict[track["id"]])
@@ -322,10 +302,11 @@ def decode_file(header_playlist_id, destination, ref_ids_input=None):
     for byte in batch(file_binary, 8):
         file_bytes.append(sum(bit * (2 ** (7 - idx)) for idx, bit in enumerate(byte)))
 
-    with open(f'{destination}\\{filename}', "wb") as f:
+    with open(f"{destination}\\{filename}", "wb") as f:
         f.write(bytes(file_bytes))
 
     return filename
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     pass
