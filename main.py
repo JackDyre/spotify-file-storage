@@ -95,7 +95,7 @@ class APIRequests:
 
     def get_playlist_tracks(self, playlist: str, offset: int, retries: int = 0):
         delta_time = time.time() - self.recent_request
-        if delta_time > 0.5:
+        if delta_time > 1:
             try:
                 self.recent_request = time.time()
                 return self.sp.user_playlist_tracks(
@@ -112,12 +112,12 @@ class APIRequests:
                 else:
                     raise e
         else:
-            time.sleep(0.5 - delta_time)
+            time.sleep(1 - delta_time)
             return self.get_playlist_tracks(playlist, offset, 0)
 
     def add_tracks_to_playlist(self, playlist: str, tracks: list, retries: int = 0):
         delta_time = time.time() - self.recent_request
-        if delta_time > 0.5:
+        if delta_time > 1:
             try:
                 self.recent_request = time.time()
                 return self.sp.user_playlist_add_tracks(
@@ -134,12 +134,12 @@ class APIRequests:
                 else:
                     raise e
         else:
-            time.sleep(0.5 - delta_time)
+            time.sleep(1 - delta_time)
             return self.add_tracks_to_playlist(playlist, tracks, 0)
 
     def create_playlist(self, name: str, retries: int = 0):
         delta_time = time.time() - self.recent_request
-        if delta_time > 0.5:
+        if delta_time > 1:
             try:
                 self.recent_request = time.time()
                 return self.sp.user_playlist_create(self.user_id, name)
@@ -154,7 +154,7 @@ class APIRequests:
                 else:
                     raise e
         else:
-            time.sleep(0.5 - delta_time)
+            time.sleep(1 - delta_time)
             return self.create_playlist(name, 0)
 
 
