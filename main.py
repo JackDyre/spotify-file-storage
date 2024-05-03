@@ -2,6 +2,7 @@ import os
 import sys
 import time
 from math import ceil
+import sqlite3
 
 import spotipy  # type: ignore
 from spotipy.oauth2 import SpotifyClientCredentials  # type: ignore
@@ -208,11 +209,8 @@ def encode_file(file, ref_ids_input=None) -> str | None:
         print_progress_bar(idx, len(file_bytes))
         file_binary.extend(decimal_to_binary_padded(byte, 8))
 
-    encode_dict = {}
-    for idx, id in enumerate(ref_ids[:8192]):
-        encode_dict[str(decimal_to_binary_padded(idx, 13))] = id
-    for idx, id in enumerate(ref_ids[-2:]):
-        encode_dict[str(idx)] = id
+    conn = sqlite3.connect('pad_13_lookup.db')
+    cursor = conn.cursor()
 
     song_count = (len(file_binary) // 13) + (len(file_binary) % 13)
     playlist_count = ceil(song_count / 9_975)
@@ -239,15 +237,20 @@ def encode_file(file, ref_ids_input=None) -> str | None:
 
         for track_data in batch(playlist_data, 13):
             if len(track_data) == 13:
-                track_ids.append(encode_dict[str(track_data)])
+                cursor.execute("SELECT * FROM pad13_id_lookup WHERE binary = ?", (str(track_data),))
+                track_id = cursor.fetchall()
+                track_ids.append(track_id[0][1])
             else:
                 for byte in track_data:
-                    track_ids.append(encode_dict[str(byte)])
+                    cursor.execute("SELECT * FROM pad13_id_lookup WHERE binary = ?", (str(byte),))
+                    track_id = cursor.fetchall()
+                    track_ids.append(track_id[0][1])
 
         print(f"Dumping tracks to playlist {playlist_iter} of {playlist_count}...")
         print(f"Playlist size: {len(track_ids)}\n")
         add_tracks_to_playlist(playlist_id, track_ids)
 
+    
     header_playlist = create_playlist(f"{filename}: Header Playlist")["id"]
     header_string = "*".join([filename] + playlist_ids)
     header_bytes = list(header_string.encode("utf-8"))
@@ -259,15 +262,22 @@ def encode_file(file, ref_ids_input=None) -> str | None:
     header_track_ids: list = []
     for header_track_data in batch(header_binary, 13):
         if len(header_track_data) == 13:
-            header_track_ids.append(encode_dict[str(header_track_data)])
+            cursor.execute("SELECT * FROM pad13_id_lookup WHERE binary = ?", (str(header_track_data),))
+            track_id = cursor.fetchall()
+            header_track_ids.append(track_id[0][1])
         else:
             for byte in header_track_data:
-                header_track_ids.append(encode_dict[str(byte)])
+                cursor.execute("SELECT * FROM pad13_id_lookup WHERE binary = ?", (str(byte),))
+                track_id = cursor.fetchall()
+                header_track_ids.append(track_id[0][1])
 
     print(f"Dumping tracks to header playlist...")
     print(f"Header size: {len(header_track_ids)}")
     add_tracks_to_playlist(header_playlist, header_track_ids)
 
+
+    cursor.close()
+    conn.close()
     return header_playlist
 
 
