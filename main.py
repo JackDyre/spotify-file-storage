@@ -115,27 +115,8 @@ class APIRequests:
             time.sleep(1 - delta_time)
             return self.get_playlist_tracks(playlist, offset, 0)
 
-    def add_tracks_to_playlist(self, playlist: str, tracks: list, retries: int = 0):
-        delta_time = time.time() - self.recent_request
-        if delta_time > 1:
-            try:
-                self.recent_request = time.time()
-                return self.sp.user_playlist_add_tracks(
-                    user=self.user_id, playlist_id=playlist, tracks=tracks
-                )
-            except spotipy.exceptions.SpotifyException as e:
-                if e.http_status == 429:
-                    print(e)
-                    print(e.headers.get("Retry-After"))
-                    print(f"retrying: waiting {(2 ** retries) * 4} seconds...")
-                    time.sleep((2**retries) * 4)
-                    retries += 1
-                    return self.add_tracks_to_playlist(playlist, tracks, retries)
-                else:
-                    raise e
-        else:
-            time.sleep(1 - delta_time)
-            return self.add_tracks_to_playlist(playlist, tracks, 0)
+    def add_tracks_to_playlist(self, playlist: str, tracks: list):
+        return self.send_request(request=self.sp.user_playlist_add_tracks, user=self.user_id, playlist_id=playlist, tracks=tracks)
 
     def create_playlist(self, name: str, retries: int = 0):
         delta_time = time.time() - self.recent_request
@@ -156,16 +137,27 @@ class APIRequests:
         else:
             time.sleep(1 - delta_time)
             return self.create_playlist(name, 0)
+    
+    def send_request(self, request, **kwargs):
+        delta_time = time.time() - self.recent_request
+        if delta_time < 1:
+            time.sleep(1 - delta_time)
+        try:
+            request_output = request(**kwargs)
+            self.recent_request = time.time()
+            return request_output
+        except spotipy.exceptions.SpotifyException as e:
+            print(e)
+            return None
 
-
-api_client: APIRequests = APIRequests()
+api_request_manager: APIRequests = APIRequests()
 
 
 def get_playlist_tracks(playlist: str) -> list:
     offset: int = 0
     tracks: list = []
     while True:
-        track_batch = api_client.get_playlist_tracks(playlist, offset)
+        track_batch = api_request_manager.get_playlist_tracks(playlist, offset)
         offset += 100
         for track in track_batch["items"]:
             tracks.append(track["track"])
@@ -177,11 +169,11 @@ def get_playlist_tracks(playlist: str) -> list:
 
 def add_tracks_to_playlist(playlist, tracks):
     for track_batch in batch(tracks, 100):
-        api_client.add_tracks_to_playlist(playlist, track_batch)
+        api_request_manager.add_tracks_to_playlist(playlist, track_batch)
 
 
 def create_playlist(name):
-    playlist = api_client.create_playlist(name)
+    playlist = api_request_manager.create_playlist(name)
     return playlist
 
 
