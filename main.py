@@ -271,7 +271,7 @@ def encode_file(file, ref_ids_input=None) -> str | None:
     return header_playlist
 
 
-def decode_file(header_playlist_id, ref_ids_input=None):
+def decode_file(header_playlist_id, destination, ref_ids_input=None):
     header_tracks = get_playlist_tracks(header_playlist_id)
 
     with open("8194-ids.txt", "r") as f:
@@ -312,7 +312,7 @@ def decode_file(header_playlist_id, ref_ids_input=None):
     for byte in batch(file_binary, 8):
         file_bytes.append(sum(bit * (2 ** (7 - idx)) for idx, bit in enumerate(byte)))
 
-    with open(filename, "wb") as f:
+    with open(f'{destination}\\{filename}', "wb") as f:
         f.write(bytes(file_bytes))
 
     return filename
