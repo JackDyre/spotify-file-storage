@@ -118,25 +118,8 @@ class APIRequests:
     def add_tracks_to_playlist(self, playlist: str, tracks: list):
         return self.send_request(request=self.sp.user_playlist_add_tracks, user=self.user_id, playlist_id=playlist, tracks=tracks)
 
-    def create_playlist(self, name: str, retries: int = 0):
-        delta_time = time.time() - self.recent_request
-        if delta_time > 1:
-            try:
-                self.recent_request = time.time()
-                return self.sp.user_playlist_create(self.user_id, name)
-            except spotipy.exceptions.SpotifyException as e:
-                if e.http_status == 429:
-                    print(e)
-                    print(e.headers.get("Retry-After"))
-                    print(f"retrying: waiting {(2 ** retries) * 4} seconds...")
-                    time.sleep((2**retries) * 4)
-                    retries += 1
-                    return self.create_playlist(name, retries)
-                else:
-                    raise e
-        else:
-            time.sleep(1 - delta_time)
-            return self.create_playlist(name, 0)
+    def create_playlist(self, name: str):
+        return self.send_request(request=self.sp.user_playlist_create, user=self.user_id, name=name)
     
     def send_request(self, request, **kwargs):
         delta_time = time.time() - self.recent_request
