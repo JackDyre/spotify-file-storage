@@ -1,11 +1,12 @@
 import os
+import sqlite3
 import sys
 import time
 from math import ceil
-import sqlite3
 
 import spotipy  # type: ignore
-from spotipy.oauth2 import SpotifyClientCredentials, SpotifyOAuth  # type: ignore
+from spotipy.oauth2 import (SpotifyClientCredentials,  # type: ignore
+                            SpotifyOAuth)
 
 
 def print_progress_bar(iteration, total):
@@ -22,14 +23,14 @@ def print_progress_bar(iteration, total):
     prefix = ""
     suffix = ""
     length = 50
-    fill = "█"
+    fill = "X"
 
-    percent = ("{0:.1f}").format(100 * (iteration / float(total)))
-    filled_length = int(length * iteration // total)
+    percent = ("{0:.1f}").format(100 * ((iteration + 1) / float(total)))
+    filled_length = int(length * (iteration + 1) // total)
     bar = fill * filled_length + "-" * (length - filled_length)
     sys.stdout.write("\r%s |%s| %s%% %s" % (prefix, bar, percent, suffix)),
     sys.stdout.flush()
-    if iteration == total:
+    if iteration + 1 == total:
         sys.stdout.write("\n")
         sys.stdout.flush()
 
@@ -44,43 +45,6 @@ def decimal_to_binary_padded(decimal, pad):
     return [int(bit) for bit in binary]
 
 
-def create_client() -> spotipy.Spotify:
-
-    try:
-        with open("api-credentials.txt", "r") as f:
-            api_dict = eval(f.read())
-        client_id = api_dict["cl-id"]
-        client_secret = api_dict["cl-secr"]
-    except:
-        client_id = input("Client ID?\n")
-        client_secret = input("Client Secret?\n")
-
-    with open("api-credentials.txt", "w") as f:
-        f.write(str({"cl-id": client_id, "cl-secr": client_secret}))
-
-    try:
-        spotipy.Spotify(
-            auth_manager=SpotifyClientCredentials(
-                client_id=client_id, client_secret=client_secret
-            )
-        )
-    except:
-        os.remove("api-credentials.txt")
-        print("\n\nInvalid API info")
-        sys.exit()
-
-    sp: spotipy.Spotify = spotipy.Spotify(
-        retries=0,
-        auth_manager=SpotifyOAuth(
-            client_id=client_id,
-            client_secret=client_secret,
-            scope="playlist-read-private playlist-modify-public playlist-modify-private",
-            redirect_uri="http://localhost:8888/callback",
-        ),
-    )
-    return sp
-
-
 def batch(iterable, batch_size):
     for i in range(0, len(iterable), batch_size):
         yield iterable[i : i + batch_size]
@@ -89,30 +53,73 @@ def batch(iterable, batch_size):
 class APIRequests:
     def __init__(self) -> None:
         self.recent_request: float = time.time()
-        self.sp: spotipy.Spotify = create_client()
-        self.user_id: str = self.sp.current_user()["id"]
+        self.sp: spotipy.Spotify = self.create_client()
+        self.user_id: str = self.send_request(request=self.sp.current_user)["id"]
 
-    def get_playlist_tracks(self, playlist: str, offset: int, retries: int = 0):
-        return self.send_request(
-            request=self.sp.user_playlist_tracks,
-            user=self.user_id,
-            playlist_id=playlist,
-            offset=offset,
-            market="US",
-        )
+    def create_client(self) -> spotipy.Spotify:
+        try:
+            with open("api-credentials.txt", "r") as f:
+                api_dict = eval(f.read())
+            client_id = api_dict["cl-id"]
+            client_secret = api_dict["cl-secr"]
+        except:
+            client_id = input("Client ID?\n")
+            client_secret = input("Client Secret?\n")
 
-    def add_tracks_to_playlist(self, playlist: str, tracks: list):
-        return self.send_request(
-            request=self.sp.user_playlist_add_tracks,
-            user=self.user_id,
-            playlist_id=playlist,
-            tracks=tracks,
-        )
+        with open("api-credentials.txt", "w") as f:
+            f.write(str({"cl-id": client_id, "cl-secr": client_secret}))
 
-    def create_playlist(self, name: str):
-        return self.send_request(
-            request=self.sp.user_playlist_create, user=self.user_id, name=name
+        try:
+            spotipy.Spotify(
+                auth_manager=SpotifyClientCredentials(
+                    client_id=client_id, client_secret=client_secret
+                )
+            )
+        except:
+            os.remove("api-credentials.txt")
+            print("\n\nInvalid API info")
+            sys.exit()
+
+        sp: spotipy.Spotify = spotipy.Spotify(
+            retries=0,
+            auth_manager=SpotifyOAuth(
+                client_id=client_id,
+                client_secret=client_secret,
+                scope="playlist-read-private playlist-modify-public playlist-modify-private",
+                redirect_uri="http://localhost:8888/callback",
+            ),
         )
+        return sp
+
+    def get_playlist_tracks(self, playlist: str) -> list[dict]:
+        offset: int = 0
+        tracks: list[dict] = []
+        while True:
+            track_batch = self.send_request(
+                request=self.sp.user_playlist_tracks,
+                user=self.user_id,
+                playlist_id=playlist,
+                offset=offset,
+                market="US",
+            )
+            offset += 100
+
+            for track in track_batch['items']:
+                tracks.append(track['track'])
+            
+            if not track_batch['next']:
+                break
+        
+        return tracks
+
+    def add_tracks_to_playlist(self, playlist: str, tracks: list) -> None:
+        for track_batch in batch(tracks, 100):
+            self.send_request(
+                request=self.sp.user_playlist_add_tracks,
+                user=self.user_id,
+                playlist_id=playlist,
+                tracks=track_batch,
+            )
 
     def send_request(self, request, **kwargs):
         delta_time = time.time() - self.recent_request
@@ -128,42 +135,6 @@ class APIRequests:
 
 
 api_request_manager: APIRequests = APIRequests()
-
-
-def get_playlist_tracks(playlist: str) -> list:
-    offset: int = 0
-    tracks: list = []
-    while True:
-        track_batch = api_request_manager.get_playlist_tracks(playlist, offset)
-        offset += 100
-        for track in track_batch["items"]:
-            tracks.append(track["track"])
-        if not track_batch["next"]:
-            break
-
-    return tracks
-
-
-def add_tracks_to_playlist(playlist, tracks):
-    for track_batch in batch(tracks, 100):
-        api_request_manager.add_tracks_to_playlist(playlist, track_batch)
-
-
-def create_playlist(name):
-    playlist = api_request_manager.create_playlist(name)
-    return playlist
-
-
-def create_ref_playlist():
-    with open("8194-ids.txt", "r") as f:
-        ref_ids = eval(f.read())
-
-    ref_playlist = create_playlist("reference bit dictionary")
-
-    add_tracks_to_playlist(ref_playlist["id"], ref_ids)
-
-    return ref_playlist
-
 
 def encode_file(file, ref_ids_input=None) -> str | None:
     with open("8194-ids.txt", "r") as f:
@@ -201,8 +172,10 @@ def encode_file(file, ref_ids_input=None) -> str | None:
         track_ids: list = []
 
         playlist_iter += 1
-        playlist_id = create_playlist(
-            f"{filename}: Playlist {playlist_iter} of {playlist_count}"
+        playlist_id = api_request_manager.send_request(
+            api_request_manager.sp.user_playlist_create,
+            user=api_request_manager.user_id,
+            name=f"{filename}: Playlist {playlist_iter} of {playlist_count}",
         )["id"]
         playlist_ids.append(playlist_id)
 
@@ -223,9 +196,13 @@ def encode_file(file, ref_ids_input=None) -> str | None:
 
         print(f"Dumping tracks to playlist {playlist_iter} of {playlist_count}...")
         print(f"Playlist size: {len(track_ids)}\n")
-        add_tracks_to_playlist(playlist_id, track_ids)
+        api_request_manager.add_tracks_to_playlist(playlist_id, track_ids)
 
-    header_playlist = create_playlist(f"{filename}: Header Playlist")["id"]
+    header_playlist = api_request_manager.send_request(
+        request=api_request_manager.sp.user_playlist_create,
+        user=api_request_manager.user_id,
+        name=f"{filename}: Header Playlist",
+    )["id"]
     header_string = "*".join([filename] + playlist_ids)
     header_bytes = list(header_string.encode("utf-8"))
 
@@ -252,15 +229,14 @@ def encode_file(file, ref_ids_input=None) -> str | None:
 
     print(f"Dumping tracks to header playlist...")
     print(f"Header size: {len(header_track_ids)}")
-    add_tracks_to_playlist(header_playlist, header_track_ids)
+    api_request_manager.add_tracks_to_playlist(header_playlist, header_track_ids)
 
     cursor.close()
     conn.close()
     return header_playlist
 
-
 def decode_file(header_playlist_id, destination, ref_ids_input=None):
-    header_tracks = get_playlist_tracks(header_playlist_id)
+    header_tracks = api_request_manager.get_playlist_tracks(header_playlist_id)
 
     with open("8194-ids.txt", "r") as f:
         ref_ids = ref_ids_input or eval(f.read())
@@ -290,7 +266,7 @@ def decode_file(header_playlist_id, destination, ref_ids_input=None):
         print(
             f"Fetching tracks from playlist {playlist_iter} of {len(playlist_ids)}..."
         )
-        tracks = get_playlist_tracks(playlist)
+        tracks = api_request_manager.get_playlist_tracks(playlist)
         total_tracks.extend(tracks)
 
     print("Reconstructing file...")
@@ -306,7 +282,3 @@ def decode_file(header_playlist_id, destination, ref_ids_input=None):
         f.write(bytes(file_bytes))
 
     return filename
-
-
-if __name__ == "__main__":
-    pass
