@@ -148,7 +148,7 @@ def encode_file(file, ref_ids_input=None) -> str | None:
         print_progress_bar(idx, len(file_bytes))
         file_binary.extend(decimal_to_binary_padded(byte, 8))
 
-    conn = sqlite3.connect("pad_13_lookup.db")
+    conn = sqlite3.connect("13bit_ids.db")
     cursor = conn.cursor()
 
     song_count = (len(file_binary) // 13) + (len(file_binary) % 13)
@@ -181,14 +181,14 @@ def encode_file(file, ref_ids_input=None) -> str | None:
         for track_data in batch(playlist_data, 13):
             if len(track_data) == 13:
                 cursor.execute(
-                    "SELECT * FROM pad13_id_lookup WHERE binary = ?", (str(track_data),)
+                    "SELECT * FROM _13bit_ids WHERE binary = ?", (str(track_data),)
                 )
                 track_id = cursor.fetchall()
                 track_ids.append(track_id[0][1])
             else:
                 for byte in track_data:
                     cursor.execute(
-                        "SELECT * FROM pad13_id_lookup WHERE binary = ?", (str(byte),)
+                        "SELECT * FROM _13bit_ids WHERE binary = ?", (str(byte),)
                     )
                     track_id = cursor.fetchall()
                     track_ids.append(track_id[0][1])
@@ -213,7 +213,7 @@ def encode_file(file, ref_ids_input=None) -> str | None:
     for header_track_data in batch(header_binary, 13):
         if len(header_track_data) == 13:
             cursor.execute(
-                "SELECT * FROM pad13_id_lookup WHERE binary = ?",
+                "SELECT * FROM _13bit_ids WHERE binary = ?",
                 (str(header_track_data),),
             )
             track_id = cursor.fetchall()
@@ -221,7 +221,7 @@ def encode_file(file, ref_ids_input=None) -> str | None:
         else:
             for byte in header_track_data:
                 cursor.execute(
-                    "SELECT * FROM pad13_id_lookup WHERE binary = ?", (str(byte),)
+                    "SELECT * FROM _13bit_ids WHERE binary = ?", (str(byte),)
                 )
                 track_id = cursor.fetchall()
                 header_track_ids.append(track_id[0][1])
@@ -237,7 +237,7 @@ def encode_file(file, ref_ids_input=None) -> str | None:
 
 def decode_file(header_playlist_id, destination, ref_ids_input=None):
 
-    conn = sqlite3.connect("pad_13_lookup.db")
+    conn = sqlite3.connect("13bit_ids.db")
     cursor = conn.cursor()
 
     header_tracks = api_request_manager.get_playlist_tracks(header_playlist_id)
@@ -245,7 +245,7 @@ def decode_file(header_playlist_id, destination, ref_ids_input=None):
     header_binary = []
     for track in header_tracks:
         cursor.execute(
-            "SELECT * FROM pad13_id_lookup WHERE track_id = ?", (track["id"],)
+            "SELECT * FROM _13bit_ids WHERE track_id = ?", (track["id"],)
         )
         binary = eval(cursor.fetchall()[0][0])
         if type(binary) is int:
@@ -272,9 +272,8 @@ def decode_file(header_playlist_id, destination, ref_ids_input=None):
 
     file_binary = []
     for track in total_tracks:
-        print(track["id"])
         cursor.execute(
-            "SELECT * FROM pad13_id_lookup WHERE track_id = ?", (track["id"],)
+            "SELECT * FROM _13bit_ids WHERE track_id = ?", (track["id"],)
         )
         binary = eval(cursor.fetchall()[0][0])
         if type(binary) is int:
