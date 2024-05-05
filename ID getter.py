@@ -42,6 +42,14 @@ try:
         print(f'Track List Length: {len(track_ids)}/{2**16 + 2} | {100 * len(track_ids)/(2**16 + 2)}')
         print(f'Artist Queue Length: {len(artist_queue)}')
         print('\n\n\n')
+
+        with open('new-id-list.txt', 'w') as f:
+            f.write(str(track_ids)) 
+        with open('artist-queue.txt', 'w') as f:
+            f.write(str(artist_queue))    
+        with open('seen-artists.txt', 'w') as f:
+            f.write(str(seen_artists)) 
+
 finally:
     with open('new-id-list.txt', 'w') as f:
         f.write(str(track_ids)) 
