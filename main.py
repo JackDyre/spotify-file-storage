@@ -112,13 +112,14 @@ class APIRequests:
         
         return tracks
 
-    def add_tracks_to_playlist(self, playlist: str, tracks: list):
-        return self.send_request(
-            request=self.sp.user_playlist_add_tracks,
-            user=self.user_id,
-            playlist_id=playlist,
-            tracks=tracks,
-        )
+    def add_tracks_to_playlist(self, playlist: str, tracks: list) -> None:
+        for track_batch in batch(tracks, 100):
+            self.send_request(
+                request=self.sp.user_playlist_add_tracks,
+                user=self.user_id,
+                playlist_id=playlist,
+                tracks=track_batch,
+            )
 
     def send_request(self, request, **kwargs):
         delta_time = time.time() - self.recent_request
@@ -134,11 +135,6 @@ class APIRequests:
 
 
 api_request_manager: APIRequests = APIRequests()
-
-
-def add_tracks_to_playlist(playlist, tracks):
-    for track_batch in batch(tracks, 100):
-        api_request_manager.add_tracks_to_playlist(playlist, track_batch)
 
 def encode_file(file, ref_ids_input=None) -> str | None:
     with open("8194-ids.txt", "r") as f:
@@ -200,7 +196,7 @@ def encode_file(file, ref_ids_input=None) -> str | None:
 
         print(f"Dumping tracks to playlist {playlist_iter} of {playlist_count}...")
         print(f"Playlist size: {len(track_ids)}\n")
-        add_tracks_to_playlist(playlist_id, track_ids)
+        api_request_manager.add_tracks_to_playlist(playlist_id, track_ids)
 
     header_playlist = api_request_manager.send_request(
         request=api_request_manager.sp.user_playlist_create,
@@ -233,12 +229,11 @@ def encode_file(file, ref_ids_input=None) -> str | None:
 
     print(f"Dumping tracks to header playlist...")
     print(f"Header size: {len(header_track_ids)}")
-    add_tracks_to_playlist(header_playlist, header_track_ids)
+    api_request_manager.add_tracks_to_playlist(header_playlist, header_track_ids)
 
     cursor.close()
     conn.close()
     return header_playlist
-
 
 def decode_file(header_playlist_id, destination, ref_ids_input=None):
     header_tracks = api_request_manager.get_playlist_tracks(header_playlist_id)
