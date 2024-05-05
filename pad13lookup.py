@@ -1,4 +1,5 @@
 import sqlite3
+import json
 
 
 def decimal_to_binary_padded(decimal, pad):
@@ -18,8 +19,8 @@ cursor = conn.cursor()
 
 
 # binary = [decimal_to_binary_padded(i, 13) for i in range(8192)] + [0, 1]
-# with open('8194-ids.txt', 'r') as f:
-#     track_ids = eval(f.read())
+# with open('13bit_ids.json', 'r') as f:
+#     track_ids = json.load(f)
 
 # cursor.execute('''CREATE TABLE IF NOT EXISTS pad13_id_lookup (
 #                     binary TEXT PRIMARY KEY,

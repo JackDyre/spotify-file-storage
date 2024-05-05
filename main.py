@@ -1,3 +1,4 @@
+import json
 import os
 import sqlite3
 import sys
@@ -5,8 +6,8 @@ import time
 from math import ceil
 
 import spotipy  # type: ignore
-from spotipy.oauth2 import (SpotifyClientCredentials,  # type: ignore
-                            SpotifyOAuth)
+from spotipy.oauth2 import SpotifyClientCredentials  # type: ignore
+from spotipy.oauth2 import SpotifyOAuth
 
 
 def print_progress_bar(iteration, total):
@@ -58,16 +59,16 @@ class APIRequests:
 
     def create_client(self) -> spotipy.Spotify:
         try:
-            with open("api-credentials.txt", "r") as f:
-                api_dict = eval(f.read())
+            with open("api-credentials.json", "r") as f:
+                api_dict = json.load(f)
             client_id = api_dict["cl-id"]
             client_secret = api_dict["cl-secr"]
         except:
             client_id = input("Client ID?\n")
             client_secret = input("Client Secret?\n")
 
-        with open("api-credentials.txt", "w") as f:
-            f.write(str({"cl-id": client_id, "cl-secr": client_secret}))
+        with open("api-credentials.json", "w") as f:
+            json.dump({"cl-id": client_id, "cl-secr": client_secret}, f)
 
         try:
             spotipy.Spotify(
@@ -76,7 +77,7 @@ class APIRequests:
                 )
             )
         except:
-            os.remove("api-credentials.txt")
+            os.remove("api-credentials.json")
             print("\n\nInvalid API info")
             sys.exit()
 
@@ -104,12 +105,12 @@ class APIRequests:
             )
             offset += 100
 
-            for track in track_batch['items']:
-                tracks.append(track['track'])
-            
-            if not track_batch['next']:
+            for track in track_batch["items"]:
+                tracks.append(track["track"])
+
+            if not track_batch["next"]:
                 break
-        
+
         return tracks
 
     def add_tracks_to_playlist(self, playlist: str, tracks: list) -> None:
@@ -135,6 +136,7 @@ class APIRequests:
 
 
 api_request_manager: APIRequests = APIRequests()
+
 
 def encode_file(file, ref_ids_input=None) -> str | None:
     filename = os.path.basename(file)
@@ -232,6 +234,7 @@ def encode_file(file, ref_ids_input=None) -> str | None:
     conn.close()
     return header_playlist
 
+
 def decode_file(header_playlist_id, destination, ref_ids_input=None):
 
     conn = sqlite3.connect("pad_13_lookup.db")
@@ -242,8 +245,8 @@ def decode_file(header_playlist_id, destination, ref_ids_input=None):
     header_binary = []
     for track in header_tracks:
         cursor.execute(
-                    "SELECT * FROM pad13_id_lookup WHERE track_id = ?", (track['id'],)
-                    )
+            "SELECT * FROM pad13_id_lookup WHERE track_id = ?", (track["id"],)
+        )
         binary = eval(cursor.fetchall()[0][0])
         if type(binary) is int:
             binary = [binary]
@@ -269,10 +272,10 @@ def decode_file(header_playlist_id, destination, ref_ids_input=None):
 
     file_binary = []
     for track in total_tracks:
-        print(track['id'])
+        print(track["id"])
         cursor.execute(
-                    "SELECT * FROM pad13_id_lookup WHERE track_id = ?", (track['id'],)
-                    )
+            "SELECT * FROM pad13_id_lookup WHERE track_id = ?", (track["id"],)
+        )
         binary = eval(cursor.fetchall()[0][0])
         if type(binary) is int:
             binary = [binary]
