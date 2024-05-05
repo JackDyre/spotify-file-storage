@@ -269,7 +269,6 @@ def decode_file(header_playlist_id, destination, ref_ids_input=None):
 
     file_binary = []
     for track in total_tracks:
-        print(track['id'])
         cursor.execute(
                     "SELECT * FROM pad13_id_lookup WHERE track_id = ?", (track['id'],)
                     )
