@@ -43,6 +43,7 @@ def decimal_to_binary_padded(decimal, pad):
     binary = binary.zfill(pad)
     return [int(bit) for bit in binary]
 
+
 def batch(iterable, batch_size):
     for i in range(0, len(iterable), batch_size):
         yield iterable[i : i + batch_size]
@@ -52,8 +53,8 @@ class APIRequests:
     def __init__(self) -> None:
         self.recent_request: float = time.time()
         self.sp: spotipy.Spotify = self.create_client()
-        self.user_id: str = self.sp.current_user()["id"]
-    
+        self.user_id: str = self.send_request(request=self.sp.current_user)["id"]
+
     def create_client(self) -> spotipy.Spotify:
         try:
             with open("api-credentials.txt", "r") as f:
@@ -145,23 +146,6 @@ def add_tracks_to_playlist(playlist, tracks):
     for track_batch in batch(tracks, 100):
         api_request_manager.add_tracks_to_playlist(playlist, track_batch)
 
-
-def create_playlist(name):
-    playlist = api_request_manager.create_playlist(name)
-    return playlist
-
-
-def create_ref_playlist():
-    with open("8194-ids.txt", "r") as f:
-        ref_ids = eval(f.read())
-
-    ref_playlist = create_playlist("reference bit dictionary")
-
-    add_tracks_to_playlist(ref_playlist["id"], ref_ids)
-
-    return ref_playlist
-
-
 def encode_file(file, ref_ids_input=None) -> str | None:
     with open("8194-ids.txt", "r") as f:
         ref_ids = ref_ids_input or eval(f.read())
@@ -198,8 +182,10 @@ def encode_file(file, ref_ids_input=None) -> str | None:
         track_ids: list = []
 
         playlist_iter += 1
-        playlist_id = create_playlist(
-            f"{filename}: Playlist {playlist_iter} of {playlist_count}"
+        playlist_id = api_request_manager.send_request(
+            api_request_manager.sp.user_playlist_create,
+            user=api_request_manager.user_id,
+            name=f"{filename}: Playlist {playlist_iter} of {playlist_count}",
         )["id"]
         playlist_ids.append(playlist_id)
 
@@ -222,7 +208,11 @@ def encode_file(file, ref_ids_input=None) -> str | None:
         print(f"Playlist size: {len(track_ids)}\n")
         add_tracks_to_playlist(playlist_id, track_ids)
 
-    header_playlist = create_playlist(f"{filename}: Header Playlist")["id"]
+    header_playlist = api_request_manager.send_request(
+        request=api_request_manager.sp.user_playlist_create,
+        user=api_request_manager.user_id,
+        name=f"{filename}: Header Playlist",
+    )["id"]
     header_string = "*".join([filename] + playlist_ids)
     header_bytes = list(header_string.encode("utf-8"))
 
