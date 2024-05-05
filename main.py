@@ -245,7 +245,7 @@ def decode_file(header_playlist_id, destination, ref_ids_input=None):
     header_binary = []
     for track in header_tracks:
         cursor.execute(
-            "SELECT * FROM _13bit_ids WHERE track_id = ?", (track["id"],)
+            "SELECT * FROM _13bit_ids WHERE track_identifier = ?", (f"{track['name']}{[artist['name'] for artist in track['artists']]}",)
         )
         binary = eval(cursor.fetchall()[0][0])
         if type(binary) is int:
@@ -273,7 +273,7 @@ def decode_file(header_playlist_id, destination, ref_ids_input=None):
     file_binary = []
     for track in total_tracks:
         cursor.execute(
-            "SELECT * FROM _13bit_ids WHERE track_id = ?", (track["id"],)
+            "SELECT * FROM _13bit_ids WHERE track_identifier = ?", (f"{track['name']}{[artist['name'] for artist in track['artists']]}",)
         )
         binary = eval(cursor.fetchall()[0][0])
         if type(binary) is int:
