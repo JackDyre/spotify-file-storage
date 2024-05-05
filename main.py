@@ -1,11 +1,12 @@
 import os
+import sqlite3
 import sys
 import time
 from math import ceil
-import sqlite3
 
 import spotipy  # type: ignore
-from spotipy.oauth2 import SpotifyClientCredentials, SpotifyOAuth  # type: ignore
+from spotipy.oauth2 import (SpotifyClientCredentials,  # type: ignore
+                            SpotifyOAuth)
 
 
 def print_progress_bar(iteration, total):
@@ -90,14 +91,26 @@ class APIRequests:
         )
         return sp
 
-    def get_playlist_tracks(self, playlist: str, offset: int):
-        return self.send_request(
-            request=self.sp.user_playlist_tracks,
-            user=self.user_id,
-            playlist_id=playlist,
-            offset=offset,
-            market="US",
-        )
+    def get_playlist_tracks(self, playlist: str) -> list[dict]:
+        offset: int = 0
+        tracks: list[dict] = []
+        while True:
+            track_batch = self.send_request(
+                request=self.sp.user_playlist_tracks,
+                user=self.user_id,
+                playlist_id=playlist,
+                offset=offset,
+                market="US",
+            )
+            offset += 100
+
+            for track in track_batch['items']:
+                tracks.append(track['track'])
+            
+            if not track_batch['next']:
+                break
+        
+        return tracks
 
     def add_tracks_to_playlist(self, playlist: str, tracks: list):
         return self.send_request(
@@ -105,11 +118,6 @@ class APIRequests:
             user=self.user_id,
             playlist_id=playlist,
             tracks=tracks,
-        )
-
-    def create_playlist(self, name: str):
-        return self.send_request(
-            request=self.sp.user_playlist_create, user=self.user_id, name=name
         )
 
     def send_request(self, request, **kwargs):
@@ -126,20 +134,6 @@ class APIRequests:
 
 
 api_request_manager: APIRequests = APIRequests()
-
-
-def get_playlist_tracks(playlist: str) -> list:
-    offset: int = 0
-    tracks: list = []
-    while True:
-        track_batch = api_request_manager.get_playlist_tracks(playlist, offset)
-        offset += 100
-        for track in track_batch["items"]:
-            tracks.append(track["track"])
-        if not track_batch["next"]:
-            break
-
-    return tracks
 
 
 def add_tracks_to_playlist(playlist, tracks):
@@ -247,7 +241,7 @@ def encode_file(file, ref_ids_input=None) -> str | None:
 
 
 def decode_file(header_playlist_id, destination, ref_ids_input=None):
-    header_tracks = get_playlist_tracks(header_playlist_id)
+    header_tracks = api_request_manager.get_playlist_tracks(header_playlist_id)
 
     with open("8194-ids.txt", "r") as f:
         ref_ids = ref_ids_input or eval(f.read())
@@ -277,7 +271,7 @@ def decode_file(header_playlist_id, destination, ref_ids_input=None):
         print(
             f"Fetching tracks from playlist {playlist_iter} of {len(playlist_ids)}..."
         )
-        tracks = get_playlist_tracks(playlist)
+        tracks = api_request_manager.get_playlist_tracks(playlist)
         total_tracks.extend(tracks)
 
     print("Reconstructing file...")
@@ -293,7 +287,3 @@ def decode_file(header_playlist_id, destination, ref_ids_input=None):
         f.write(bytes(file_bytes))
 
     return filename
-
-
-if __name__ == "__main__":
-    pass
