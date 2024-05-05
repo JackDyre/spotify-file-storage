@@ -22,14 +22,14 @@ def print_progress_bar(iteration, total):
     prefix = ""
     suffix = ""
     length = 50
-    fill = "█"
+    fill = "X"
 
-    percent = ("{0:.1f}").format(100 * (iteration / float(total)))
-    filled_length = int(length * iteration // total)
+    percent = ("{0:.1f}").format(100 * ((iteration + 1) / float(total)))
+    filled_length = int(length * (iteration + 1) // total)
     bar = fill * filled_length + "-" * (length - filled_length)
     sys.stdout.write("\r%s |%s| %s%% %s" % (prefix, bar, percent, suffix)),
     sys.stdout.flush()
-    if iteration == total:
+    if iteration + 1 == total:
         sys.stdout.write("\n")
         sys.stdout.flush()
 
@@ -43,44 +43,6 @@ def decimal_to_binary_padded(decimal, pad):
     binary = binary.zfill(pad)
     return [int(bit) for bit in binary]
 
-
-def create_client() -> spotipy.Spotify:
-
-    try:
-        with open("api-credentials.txt", "r") as f:
-            api_dict = eval(f.read())
-        client_id = api_dict["cl-id"]
-        client_secret = api_dict["cl-secr"]
-    except:
-        client_id = input("Client ID?\n")
-        client_secret = input("Client Secret?\n")
-
-    with open("api-credentials.txt", "w") as f:
-        f.write(str({"cl-id": client_id, "cl-secr": client_secret}))
-
-    try:
-        spotipy.Spotify(
-            auth_manager=SpotifyClientCredentials(
-                client_id=client_id, client_secret=client_secret
-            )
-        )
-    except:
-        os.remove("api-credentials.txt")
-        print("\n\nInvalid API info")
-        sys.exit()
-
-    sp: spotipy.Spotify = spotipy.Spotify(
-        retries=0,
-        auth_manager=SpotifyOAuth(
-            client_id=client_id,
-            client_secret=client_secret,
-            scope="playlist-read-private playlist-modify-public playlist-modify-private",
-            redirect_uri="http://localhost:8888/callback",
-        ),
-    )
-    return sp
-
-
 def batch(iterable, batch_size):
     for i in range(0, len(iterable), batch_size):
         yield iterable[i : i + batch_size]
@@ -89,10 +51,45 @@ def batch(iterable, batch_size):
 class APIRequests:
     def __init__(self) -> None:
         self.recent_request: float = time.time()
-        self.sp: spotipy.Spotify = create_client()
+        self.sp: spotipy.Spotify = self.create_client()
         self.user_id: str = self.sp.current_user()["id"]
+    
+    def create_client(self) -> spotipy.Spotify:
+        try:
+            with open("api-credentials.txt", "r") as f:
+                api_dict = eval(f.read())
+            client_id = api_dict["cl-id"]
+            client_secret = api_dict["cl-secr"]
+        except:
+            client_id = input("Client ID?\n")
+            client_secret = input("Client Secret?\n")
 
-    def get_playlist_tracks(self, playlist: str, offset: int, retries: int = 0):
+        with open("api-credentials.txt", "w") as f:
+            f.write(str({"cl-id": client_id, "cl-secr": client_secret}))
+
+        try:
+            spotipy.Spotify(
+                auth_manager=SpotifyClientCredentials(
+                    client_id=client_id, client_secret=client_secret
+                )
+            )
+        except:
+            os.remove("api-credentials.txt")
+            print("\n\nInvalid API info")
+            sys.exit()
+
+        sp: spotipy.Spotify = spotipy.Spotify(
+            retries=0,
+            auth_manager=SpotifyOAuth(
+                client_id=client_id,
+                client_secret=client_secret,
+                scope="playlist-read-private playlist-modify-public playlist-modify-private",
+                redirect_uri="http://localhost:8888/callback",
+            ),
+        )
+        return sp
+
+    def get_playlist_tracks(self, playlist: str, offset: int):
         return self.send_request(
             request=self.sp.user_playlist_tracks,
             user=self.user_id,
