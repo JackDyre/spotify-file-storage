@@ -13,8 +13,7 @@ with open('seen-artists.txt', 'r') as f:
 
 try:
     while (artist_queue) and (len(track_ids) < ((2 ** 16) + 2)):
-        artist_id = artist_queue.pop(0)
-        seen_artists.append(artist_id)
+        artist_id = artist_queue[0]
 
         artist = api_request_manager.send_request(request=api_request_manager.sp.artist, artist_id=artist_id)
         print(artist['name'])
@@ -30,7 +29,7 @@ try:
 
         for album in albums:
             tracks = api_request_manager.send_request(request=api_request_manager.sp.album_tracks, album_id=album['id'])
-            print_progress_bar(albums.index(album) + 1, len(albums))
+            print_progress_bar(albums.index(album), len(albums))
 
             for track in tracks['items']:
                 if track['id'] not in track_ids:
@@ -42,6 +41,8 @@ try:
         print(f'Track List Length: {len(track_ids)}/{2**16 + 2} | {100 * len(track_ids)/(2**16 + 2)}')
         print(f'Artist Queue Length: {len(artist_queue)}')
         print('\n\n\n')
+
+        seen_artists.append(artist_queue.pop(0))
 
         with open('new-id-list.txt', 'w') as f:
             f.write(str(track_ids)) 
