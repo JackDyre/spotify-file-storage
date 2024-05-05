@@ -137,9 +137,6 @@ class APIRequests:
 api_request_manager: APIRequests = APIRequests()
 
 def encode_file(file, ref_ids_input=None) -> str | None:
-    with open("8194-ids.txt", "r") as f:
-        ref_ids = ref_ids_input or eval(f.read())
-
     filename = os.path.basename(file)
     with open(file, "rb") as f:  # type: ignore
         file_bytes = list(f.read())
@@ -236,20 +233,21 @@ def encode_file(file, ref_ids_input=None) -> str | None:
     return header_playlist
 
 def decode_file(header_playlist_id, destination, ref_ids_input=None):
+
+    conn = sqlite3.connect("pad_13_lookup.db")
+    cursor = conn.cursor()
+
     header_tracks = api_request_manager.get_playlist_tracks(header_playlist_id)
-
-    with open("8194-ids.txt", "r") as f:
-        ref_ids = ref_ids_input or eval(f.read())
-
-    decode_dict = {}
-    for idx, id in enumerate(ref_ids[:8192]):
-        decode_dict[id] = decimal_to_binary_padded(idx, 13)
-    for idx, id in enumerate(ref_ids[-2:]):
-        decode_dict[id] = [idx]
 
     header_binary = []
     for track in header_tracks:
-        header_binary.extend(decode_dict[track["id"]])
+        cursor.execute(
+                    "SELECT * FROM pad13_id_lookup WHERE track_id = ?", (track['id'],)
+                    )
+        binary = eval(cursor.fetchall()[0][0])
+        if type(binary) is int:
+            binary = [binary]
+        header_binary.extend(binary)
 
     header_bytes = []
     for byte in batch(header_binary, 8):
@@ -269,11 +267,18 @@ def decode_file(header_playlist_id, destination, ref_ids_input=None):
         tracks = api_request_manager.get_playlist_tracks(playlist)
         total_tracks.extend(tracks)
 
-    print("Reconstructing file...")
     file_binary = []
     for track in total_tracks:
-        file_binary.extend(decode_dict[track["id"]])
+        print(track['id'])
+        cursor.execute(
+                    "SELECT * FROM pad13_id_lookup WHERE track_id = ?", (track['id'],)
+                    )
+        binary = eval(cursor.fetchall()[0][0])
+        if type(binary) is int:
+            binary = [binary]
+        file_binary.extend(binary)
 
+    print("Reconstructing file...")
     file_bytes = []
     for byte in batch(file_binary, 8):
         file_bytes.append(sum(bit * (2 ** (7 - idx)) for idx, bit in enumerate(byte)))
@@ -281,4 +286,6 @@ def decode_file(header_playlist_id, destination, ref_ids_input=None):
     with open(f"{destination}\\{filename}", "wb") as f:
         f.write(bytes(file_bytes))
 
+    cursor.close()
+    conn.close()
     return filename

@@ -38,9 +38,9 @@ cursor = conn.cursor()
 #     print(row)
 
 
-cursor.execute("SELECT * FROM pad13_id_lookup WHERE binary = ?", (str(decimal_to_binary_padded(6000,13)),))
-track_id = cursor.fetchall()
-print(track_id[0])
+# cursor.execute("SELECT * FROM pad13_id_lookup WHERE binary = ?", (str(decimal_to_binary_padded(6000,13)),))
+# track_id = cursor.fetchall()
+# print(track_id[0])
 
 cursor.close()
 conn.close()
