@@ -4,6 +4,7 @@ import sqlite3
 import sys
 import time
 from math import ceil
+import gzip as gz
 
 import spotipy  # type: ignore
 from spotipy.oauth2 import SpotifyClientCredentials  # type: ignore
@@ -138,7 +139,7 @@ class APIRequests:
 api_request_manager: APIRequests = APIRequests()
 
 
-def encode_file(file, ref_ids_input=None) -> str | None:
+def encode_file(file) -> str | None:
     filename = os.path.basename(file)
     with open(file, "rb") as f:  # type: ignore
         file_bytes = list(f.read())
@@ -235,7 +236,7 @@ def encode_file(file, ref_ids_input=None) -> str | None:
     return header_playlist
 
 
-def decode_file(header_playlist_id, destination, ref_ids_input=None):
+def decode_file(header_playlist_id, destination):
 
     conn = sqlite3.connect("13bit_ids.db")
     cursor = conn.cursor()
