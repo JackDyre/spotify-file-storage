@@ -141,8 +141,16 @@ api_request_manager: APIRequests = APIRequests()
 
 def encode_file(file) -> str | None:
     filename = os.path.basename(file)
-    with open(file, "rb") as f:  # type: ignore
+
+
+    with open(file, 'rb') as uncompressed_file:
+        with gz.open(f'{filename}.gz', 'wb') as compressed_file:
+            compressed_file.writelines(uncompressed_file)
+
+    with open(f'{filename}.gz', "rb") as f:  # type: ignore
         file_bytes = list(f.read())
+    
+    os.remove(f'{filename}.gz')
 
     file_binary: list = []
     for idx, byte in enumerate(file_bytes):
