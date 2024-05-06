@@ -13,7 +13,7 @@ def decimal_to_binary_padded(decimal, pad):
     return [int(bit) for bit in binary]
 
 # os.remove('13bit_ids.db')
-conn = sqlite3.connect('13bit_ids_idents.db')
+conn = sqlite3.connect('13bit_ids.db')
 
 cursor = conn.cursor()
 
