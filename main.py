@@ -4,6 +4,7 @@ import sqlite3
 import sys
 import time
 from math import ceil
+import gzip as gz
 
 import spotipy  # type: ignore
 from spotipy.oauth2 import SpotifyClientCredentials  # type: ignore
@@ -138,10 +139,18 @@ class APIRequests:
 api_request_manager: APIRequests = APIRequests()
 
 
-def encode_file(file, ref_ids_input=None) -> str | None:
+def encode_file(file) -> str | None:
     filename = os.path.basename(file)
-    with open(file, "rb") as f:  # type: ignore
+
+
+    with open(file, 'rb') as uncompressed_file:
+        with gz.open(f'{filename}.gz', 'wb') as compressed_file:
+            compressed_file.writelines(uncompressed_file)
+
+    with open(f'{filename}.gz', "rb") as f:  # type: ignore
         file_bytes = list(f.read())
+    
+    os.remove(f'{filename}.gz')
 
     file_binary: list = []
     for idx, byte in enumerate(file_bytes):
@@ -235,8 +244,7 @@ def encode_file(file, ref_ids_input=None) -> str | None:
     return header_playlist
 
 
-def decode_file(header_playlist_id, destination, ref_ids_input=None):
-
+def decode_file(header_playlist_id, destination):
     conn = sqlite3.connect("13bit_ids.db")
     cursor = conn.cursor()
 
@@ -285,8 +293,14 @@ def decode_file(header_playlist_id, destination, ref_ids_input=None):
     for byte in batch(file_binary, 8):
         file_bytes.append(sum(bit * (2 ** (7 - idx)) for idx, bit in enumerate(byte)))
 
-    with open(f"{destination}\\{filename}", "wb") as f:
+    with open(f'{filename}.gz', 'wb') as f:
         f.write(bytes(file_bytes))
+
+    with open(f"{destination}\\{filename}", "wb") as uncompressed_file:
+        with gz.open(f'{filename}.gz', 'rb') as compressed_file:
+            uncompressed_file.write(compressed_file.read())
+    
+    os.remove(f'{filename}.gz')
 
     cursor.close()
     conn.close()
