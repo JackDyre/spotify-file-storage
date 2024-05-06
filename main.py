@@ -299,6 +299,8 @@ def decode_file(header_playlist_id, destination):
     with open(f"{destination}\\{filename}", "wb") as uncompressed_file:
         with gz.open(f'{filename}.gz', 'rb') as compressed_file:
             uncompressed_file.write(compressed_file.read())
+    
+    os.remove(f'{filename}.gz')
 
     cursor.close()
     conn.close()
