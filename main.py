@@ -245,7 +245,6 @@ def encode_file(file) -> str | None:
 
 
 def decode_file(header_playlist_id, destination):
-
     conn = sqlite3.connect("13bit_ids.db")
     cursor = conn.cursor()
 
@@ -294,8 +293,12 @@ def decode_file(header_playlist_id, destination):
     for byte in batch(file_binary, 8):
         file_bytes.append(sum(bit * (2 ** (7 - idx)) for idx, bit in enumerate(byte)))
 
-    with open(f"{destination}\\{filename}", "wb") as f:
+    with open(f'{filename}.gz', 'wb') as f:
         f.write(bytes(file_bytes))
+
+    with open(f"{destination}\\{filename}", "wb") as uncompressed_file:
+        with gz.open(f'{filename}.gz', 'rb') as compressed_file:
+            uncompressed_file.write(compressed_file.read())
 
     cursor.close()
     conn.close()
