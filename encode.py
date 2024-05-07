@@ -59,18 +59,18 @@ def confirmation_prompt() -> bool:
 
 def split_binary_into_tracks(binary: list, bits_per_track: int, cursor: Cursor) -> Generator:
     for track_data in batch(binary, bits_per_track):
-        cursor.execute(
-            "SELECT * FROM _13bit_ids WHERE binary = ?", (str(track_data),)
-        )
-        track_id = cursor.fetchall()
-        yield track_id[0][1]
-    else:
-        for byte in track_data:
-            cursor.execute(
-                "SELECT * FROM _13bit_ids WHERE binary = ?", (str(byte),)
+        if len(track_data) == bits_per_track:
+            yield lookup_id_in_db(track_data, cursor)
+        else:
+            for byte in track_data:
+                yield lookup_id_in_db(byte, cursor)
+
+def lookup_id_in_db(binary: list, cursor: Cursor) -> str:
+    cursor.execute(
+                "SELECT * FROM _13bit_ids WHERE binary = ?", (str(binary),)
             )
-            track_id = cursor.fetchall()
-            yield track_id[0][1]
+    track_id = cursor.fetchall()[0][1]
+    return track_id
 
 def w(file: File, is_compressed: bool=True, lookup_db: str='13bit_ids.db', max_tracks_per_playlist: int=9_988, bits_per_track: int = 13, print_progress: bool=True, confirm_write: bool=True) -> str | None:
 
