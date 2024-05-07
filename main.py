@@ -60,7 +60,6 @@ def batch(iterable, batch_size):
         yield batch_list
 
 
-
 class APIRequests:
     def __init__(self) -> None:
         self.recent_request: float = time.time()
@@ -148,9 +147,6 @@ class APIRequests:
 api_request_manager: APIRequests = APIRequests()
 
 
-
-
-
 def decode_file(header_playlist_id, destination):
     conn = sqlite3.connect("13bit_ids.db")
     cursor = conn.cursor()
@@ -160,7 +156,10 @@ def decode_file(header_playlist_id, destination):
     header_binary = []
     for track in header_tracks:
         cursor.execute(
-            "SELECT * FROM _13bit_ids WHERE track_identifier = ?", (f"{track['name']}{[artist['name'] for artist in track['artists']]}{track['album']['name']}",)
+            "SELECT * FROM _13bit_ids WHERE track_identifier = ?",
+            (
+                f"{track['name']}{[artist['name'] for artist in track['artists']]}{track['album']['name']}",
+            ),
         )
         binary = eval(cursor.fetchall()[0][0])
         if type(binary) is int:
@@ -188,7 +187,10 @@ def decode_file(header_playlist_id, destination):
     file_binary = []
     for track in total_tracks:
         cursor.execute(
-            "SELECT * FROM _13bit_ids WHERE track_identifier = ?", (f"{track['name']}{[artist['name'] for artist in track['artists']]}{track['album']['name']}",)
+            "SELECT * FROM _13bit_ids WHERE track_identifier = ?",
+            (
+                f"{track['name']}{[artist['name'] for artist in track['artists']]}{track['album']['name']}",
+            ),
         )
         binary = eval(cursor.fetchall()[0][0])
         if type(binary) is int:
@@ -200,14 +202,14 @@ def decode_file(header_playlist_id, destination):
     for byte in batch(file_binary, 8):
         file_bytes.append(sum(bit * (2 ** (7 - idx)) for idx, bit in enumerate(byte)))
 
-    with open(f'{filename}.gz', 'wb') as f:
+    with open(f"{filename}.gz", "wb") as f:
         f.write(bytes(file_bytes))
 
     with open(f"{destination}\\{filename}", "wb") as uncompressed_file:
-        with gz.open(f'{filename}.gz', 'rb') as compressed_file:
+        with gz.open(f"{filename}.gz", "rb") as compressed_file:
             uncompressed_file.write(compressed_file.read())
-    
-    os.remove(f'{filename}.gz')
+
+    os.remove(f"{filename}.gz")
 
     cursor.close()
     conn.close()
