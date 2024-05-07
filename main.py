@@ -47,8 +47,18 @@ def decimal_to_binary_padded(decimal, pad):
 
 
 def batch(iterable, batch_size):
-    for i in range(0, len(iterable), batch_size):
-        yield iterable[i : i + batch_size]
+    iterator = iter(iterable)
+    while True:
+        batch_list = []
+        for _ in range(batch_size):
+            try:
+                batch_list.append(next(iterator))
+            except StopIteration:
+                break
+        if not batch_list:
+            break
+        yield batch_list
+
 
 
 class APIRequests:
