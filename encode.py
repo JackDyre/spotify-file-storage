@@ -33,7 +33,10 @@ class File:
     
     @property
     def uncompressed_binary(self) -> list[int]:
-        raise NotImplementedError
+        with open(self.path, 'rb') as f:
+            file_bytes = list(f.read())
+    
+        return self.bytes_to_binary(file_bytes)
     
     @staticmethod
     def bytes_to_binary(bytes: list[int]) -> list[int]:
@@ -88,7 +91,6 @@ def w(file: File, is_compressed: bool=True, lookup_db: str='13bit_ids.db', max_t
     if print_progress:
         raise NotImplementedError
     
-    
     playlist_ids: list[str] = []
     for idx, playlist_batch in enumerate(batch(split_binary_into_tracks(file_binary, bits_per_track, db_cursor), max_tracks_per_playlist), start=1):
         
@@ -100,10 +102,19 @@ def w(file: File, is_compressed: bool=True, lookup_db: str='13bit_ids.db', max_t
         playlist_ids.append(playlist_id)
 
         api_request_manager.add_tracks_to_playlist(playlist=playlist_id, tracks=list(playlist_batch))
+    
+    header_string = "*".join([file.name] + playlist_ids)
+    header_tracks = split_binary_into_tracks(File.bytes_to_binary(list(header_string.encode('utf-8'))), bits_per_track, db_cursor)
 
+    header_id = api_request_manager.send_request(
+        api_request_manager.sp.user_playlist_create,
+        user=api_request_manager.user_id,
+        name=f"{file.name}: Header Playlist",
+    )["id"]
 
+    api_request_manager.add_tracks_to_playlist(playlist=header_id, tracks=list(header_tracks))
 
-    return ''
+    return header_id
 
 
 
@@ -219,5 +230,5 @@ def write_file_to_playlist(file) -> str | None:
 if __name__ == '__main__':
     file = File(get_file_path())
     header_playlist = w(file, confirm_write=False, print_progress=False)
-    # pyperclip.copy(header_playlist)
-    # print('\nHeader playlist ID copied to clipboard')
+    pyperclip.copy(header_playlist)
+    print('\nHeader playlist ID copied to clipboard')
