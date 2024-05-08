@@ -64,9 +64,15 @@ def get_binary(file: File, is_compressed: bool = True) -> list[int]:
         return file.uncompressed_binary
 
 
-def confirmation_prompt() -> bool:
-    raise NotImplementedError
-
+def confirmation_prompt(track_count, playlist_count) -> bool:
+    print(f'\nTracks needed: {track_count}')
+    print(f'Playlists needed: {playlist_count}')
+    print(f'Time estimate: {ceil(track_count / 100)}s')
+    confirmation = input('Confirm? (Y/N)\n')
+    print('\n')
+    if confirmation.upper() == 'Y':
+        return True
+    return False
 
 def split_binary_into_tracks(
     binary: list, bits_per_track: int, database: str
@@ -107,16 +113,17 @@ def write_to_playlist(
     track_count = len(file_binary) // 13 + len(file_binary) % 13
     playlist_count = ceil(track_count / max_tracks_per_playlist)
 
-    if confirm_write and confirmation_prompt():
+    if confirm_write and not confirmation_prompt(track_count, playlist_count):
         return None
-
-    if print_progress:
-        raise NotImplementedError
 
     playlist_ids: list[str] = []
     for idx, playlist_batch in enumerate(
         batch(
-            split_binary_into_tracks(file_binary, bits_per_track, lookup_db),
+            split_binary_into_tracks(
+                file_binary, 
+                bits_per_track,
+                lookup_db
+                ),
             max_tracks_per_playlist,
         ),
         start=1,
@@ -129,8 +136,10 @@ def write_to_playlist(
         )["id"]
         playlist_ids.append(playlist_id)
 
+        if print_progress:
+            print(f'Dumping {len(list(playlist_batch))} tracks into playlist {idx} of {playlist_count}')
         api_request_manager.add_tracks_to_playlist(
-            playlist=playlist_id, tracks=list(playlist_batch)
+            playlist=playlist_id, tracks=list(playlist_batch), print_progress=print_progress
         )
 
     header_string = "*".join([file.name] + playlist_ids)
@@ -155,6 +164,6 @@ def write_to_playlist(
 
 if __name__ == "__main__":
     file = File(get_file_path())
-    header_playlist = write_to_playlist(file, confirm_write=False, print_progress=False)
+    header_playlist = write_to_playlist(file, confirm_write=True, print_progress=True)
     pyperclip.copy(header_playlist)
     print("\nHeader playlist ID copied to clipboard")
