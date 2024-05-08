@@ -1,82 +1,57 @@
-from main import api_request_manager, batch
-import sqlite3
-from sqlite3 import Cursor, Connection
-import os
 import gzip as gz
+import os
+import sqlite3
 import tkinter as tk
+from sqlite3 import Connection, Cursor
 from tkinter import filedialog
-from typing import Generator
+from typing import Generator, Iterable
+
+from main import api_request_manager, batch
 
 
-def read_binary_from_playlist(playlist: str, database: str):
-    playlist_tracks = api_request_manager.get_playlist_tracks(playlist)
-
+def read_binary_from_playlist(playlist: str, database: str) -> Generator:
     db_connection: Connection = sqlite3.connect(database)
     db_cursor: Cursor = db_connection.cursor()
+
+    tracks: list[dict] = api_request_manager.get_playlist_tracks(playlist)
+    for track in tracks:
+        db_cursor.execute(
+            "SELECT * FROM _13bit_ids WHERE track_identifier = ?",
+            (
+                f"{track['name']}{[artist['name'] for artist in track['artists']]}{track['album']['name']}",
+            ),
+        )
+        binary: list[int] | int = eval(db_cursor.fetchall()[0][0])
+        if type(binary) is int:
+            binary = [binary]
+        for bit in binary:  # type: ignore
+            yield bit
 
     db_cursor.close()
     db_connection.close()
 
-    
 
-def read(header_playlist: str) -> str:
-    raise
+def binary_to_bytes(binary: Iterable) -> Generator:
+    for byte in enumerate(batch(binary, 8)):
+        yield sum(bit * (2 ** (7 - idx)) for idx, bit in enumerate(byte))
 
 
-def decode_file(header_playlist_id, destination):
-    conn = sqlite3.connect("13bit_ids.db")
-    cursor = conn.cursor()
+def read(header_playlist: str, destination: str, lookup_db: str = "13bit-ids.db") -> str:
 
-    header_tracks = api_request_manager.get_playlist_tracks(header_playlist_id)
+    header_string: str = bytes(
+        binary_to_bytes(
+            read_binary_from_playlist(header_playlist, lookup_db)
+            )
+    ).decode("utf-8")
 
-    header_binary = []
-    for track in header_tracks:
-        cursor.execute(
-            "SELECT * FROM _13bit_ids WHERE track_identifier = ?",
-            (
-                f"{track['name']}{[artist['name'] for artist in track['artists']]}{track['album']['name']}",
-            ),
-        )
-        binary = eval(cursor.fetchall()[0][0])
-        if type(binary) is int:
-            binary = [binary]
-        header_binary.extend(binary)
-
-    header_bytes = []
-    for byte in batch(header_binary, 8):
-        header_bytes.append(sum(bit * (2 ** (7 - idx)) for idx, bit in enumerate(byte)))
-
-    header_string = bytes(header_bytes).decode("utf-8")
-    playlist_ids = header_string.split("*")
+    playlist_ids: list[str] = header_string.split("*")
     filename = playlist_ids.pop(0)
 
-    total_tracks = []
-    playlist_iter = 0
+    file_binary: list[int] = []
     for playlist in playlist_ids:
-        playlist_iter += 1
-        print(
-            f"Fetching tracks from playlist {playlist_iter} of {len(playlist_ids)}..."
-        )
-        tracks = api_request_manager.get_playlist_tracks(playlist)
-        total_tracks.extend(tracks)
-
-    file_binary = []
-    for track in total_tracks:
-        cursor.execute(
-            "SELECT * FROM _13bit_ids WHERE track_identifier = ?",
-            (
-                f"{track['name']}{[artist['name'] for artist in track['artists']]}{track['album']['name']}",
-            ),
-        )
-        binary = eval(cursor.fetchall()[0][0])
-        if type(binary) is int:
-            binary = [binary]
-        file_binary.extend(binary)
-
-    print("Reconstructing file...")
-    file_bytes = []
-    for byte in batch(file_binary, 8):
-        file_bytes.append(sum(bit * (2 ** (7 - idx)) for idx, bit in enumerate(byte)))
+        playlist_binary = read_binary_from_playlist(playlist, lookup_db)
+        file_binary.extend(playlist_binary)
+    file_bytes = binary_to_bytes(file_binary)
 
     with open(f"{filename}.gz", "wb") as f:
         f.write(bytes(file_bytes))
@@ -87,17 +62,17 @@ def decode_file(header_playlist_id, destination):
 
     os.remove(f"{filename}.gz")
 
-    cursor.close()
-    conn.close()
-    return filename
+    return destination
+
 
 def get_destination_directory():
     root = tk.Tk()
     root.withdraw()
     return filedialog.askdirectory()
 
-if __name__ == '__main__':
-    header_playlist = input('Paste header playlist URL/ID:\n\n')
+
+if __name__ == "__main__":
+    header_playlist = input("Paste header playlist URL/ID:\n\n")
     destination = get_destination_directory()
-    file = decode_file(header_playlist, destination)
-    print(f'File successfully decoded and saved as {file}')
+    file = read(header_playlist, destination)
+    print(f"File successfully decoded and saved as {file}")
