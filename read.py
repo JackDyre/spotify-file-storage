@@ -2,6 +2,7 @@ import gzip as gz
 import os
 import sqlite3
 import tkinter as tk
+from math import ceil
 from sqlite3 import Connection, Cursor
 from tkinter import filedialog
 from typing import Generator, Iterable
@@ -35,25 +36,32 @@ def binary_to_bytes(binary: Iterable) -> Generator:
     for byte in batch(binary, 8):
         yield sum(bit * (2 ** (7 - idx)) for idx, bit in enumerate(byte))
 
+
 def confirmation_prompt(playlist_ids: list[str]) -> bool:
     total_tracks: int = 0
     for playlist in playlist_ids:
-        total_tracks += api_request_manager.send_request(request=api_request_manager.sp.playlist, playlist_id=playlist)['tracks']['total']
-    
-    print(f'Total tracks: {total_tracks}')
-    confirmation = input('Confirm (Y/N)\n')
-    if confirmation.upper() == 'Y':
+        total_tracks += api_request_manager.send_request(
+            request=api_request_manager.sp.playlist, playlist_id=playlist
+        )["tracks"]["total"]
+
+    print(f"Total tracks: {total_tracks}")
+    print(f"Time estimate: {ceil(total_tracks / 100)}s")
+    confirmation = input("Confirm (Y/N)\n")
+    if confirmation.upper() == "Y":
         return True
     return False
 
 
-
-def read_from_playlist(header_playlist: str, destination: str, lookup_db: str = "13bit_ids.db", confirm_read: bool = False, print_progress: bool = False) -> str:
+def read_from_playlist(
+    header_playlist: str,
+    destination: str,
+    lookup_db: str = "13bit_ids.db",
+    confirm_read: bool = False,
+    print_progress: bool = False,
+) -> str:
 
     header_string: str = bytes(
-        binary_to_bytes(
-            read_binary_from_playlist(header_playlist, lookup_db)
-            )
+        binary_to_bytes(read_binary_from_playlist(header_playlist, lookup_db))
     ).decode("utf-8")
 
     playlist_ids: list[str] = header_string.split("*")
@@ -74,7 +82,7 @@ def read_from_playlist(header_playlist: str, destination: str, lookup_db: str = 
 
     os.remove(f"{filename}.gz")
 
-    return f'{destination}/{filename}'
+    return f"{destination}/{filename}"
 
 
 def get_destination_directory():

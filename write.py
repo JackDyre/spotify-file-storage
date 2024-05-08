@@ -65,19 +65,20 @@ def get_binary(file: File, is_compressed: bool = True) -> list[int]:
 
 
 def confirmation_prompt(track_count, playlist_count) -> bool:
-    print(f'\nTracks needed: {track_count}')
-    print(f'Playlists needed: {playlist_count}')
-    print(f'Time estimate: {ceil(track_count / 100)}s')
-    confirmation = input('Confirm? (Y/N)\n')
-    print('\n')
-    if confirmation.upper() == 'Y':
+    print(f"\nTracks needed: {track_count}")
+    print(f"Playlists needed: {playlist_count}")
+    print(f"Time estimate: {ceil(track_count / 100)}s")
+    confirmation = input("Confirm? (Y/N)\n")
+    print("\n")
+    if confirmation.upper() == "Y":
         return True
     return False
+
 
 def split_binary_into_tracks(
     binary: list, bits_per_track: int, database: str
 ) -> Generator:
-    
+
     db_connection: Connection = sqlite3.connect(database)
     db_cursor: Cursor = db_connection.cursor()
 
@@ -87,7 +88,7 @@ def split_binary_into_tracks(
         else:
             for byte in track_data:
                 yield lookup_id_in_db(byte, db_cursor)
-    
+
     db_cursor.close()
     db_connection.close()
 
@@ -119,11 +120,7 @@ def write_to_playlist(
     playlist_ids: list[str] = []
     for idx, playlist_batch in enumerate(
         batch(
-            split_binary_into_tracks(
-                file_binary, 
-                bits_per_track,
-                lookup_db
-                ),
+            split_binary_into_tracks(file_binary, bits_per_track, lookup_db),
             max_tracks_per_playlist,
         ),
         start=1,
@@ -137,9 +134,13 @@ def write_to_playlist(
         playlist_ids.append(playlist_id)
 
         if print_progress:
-            print(f'Dumping {len(list(playlist_batch))} tracks into playlist {idx} of {playlist_count}')
+            print(
+                f"Dumping {len(list(playlist_batch))} tracks into playlist {idx} of {playlist_count}"
+            )
         api_request_manager.add_tracks_to_playlist(
-            playlist=playlist_id, tracks=list(playlist_batch), print_progress=print_progress
+            playlist=playlist_id,
+            tracks=list(playlist_batch),
+            print_progress=print_progress,
         )
 
     header_string = "*".join([file.name] + playlist_ids)
