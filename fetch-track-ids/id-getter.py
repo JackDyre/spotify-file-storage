@@ -1,5 +1,11 @@
+import sys
+
+sys.path.append('../spotify-file-storage')
+
 from main import api_request_manager
 from main import print_progress_bar
+
+sys.path.append('/fetch-track-ids')
 
 with open('new-id-list.txt', 'r') as f:
     track_ids = eval(f.read())
