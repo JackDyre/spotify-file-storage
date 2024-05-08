@@ -32,11 +32,11 @@ def read_binary_from_playlist(playlist: str, database: str) -> Generator:
 
 
 def binary_to_bytes(binary: Iterable) -> Generator:
-    for byte in enumerate(batch(binary, 8)):
+    for byte in batch(binary, 8):
         yield sum(bit * (2 ** (7 - idx)) for idx, bit in enumerate(byte))
 
 
-def read(header_playlist: str, destination: str, lookup_db: str = "13bit-ids.db") -> str:
+def read(header_playlist: str, destination: str, lookup_db: str = "13bit_ids.db") -> str:
 
     header_string: str = bytes(
         binary_to_bytes(
@@ -62,7 +62,7 @@ def read(header_playlist: str, destination: str, lookup_db: str = "13bit-ids.db"
 
     os.remove(f"{filename}.gz")
 
-    return destination
+    return f'{destination}/{filename}'
 
 
 def get_destination_directory():
