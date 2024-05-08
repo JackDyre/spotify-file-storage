@@ -1,11 +1,25 @@
 from main import api_request_manager, batch
 import sqlite3
+from sqlite3 import Cursor, Connection
 import os
 import gzip as gz
 import tkinter as tk
 from tkinter import filedialog
+from typing import Generator
 
-def read(playlist: str) -> str:
+
+def read_binary_from_playlist(playlist: str, database: str):
+    playlist_tracks = api_request_manager.get_playlist_tracks(playlist)
+
+    db_connection: Connection = sqlite3.connect(database)
+    db_cursor: Cursor = db_connection.cursor()
+
+    db_cursor.close()
+    db_connection.close()
+
+    
+
+def read(header_playlist: str) -> str:
     raise
 
 
