@@ -69,14 +69,21 @@ def confirmation_prompt() -> bool:
 
 
 def split_binary_into_tracks(
-    binary: list, bits_per_track: int, cursor: Cursor
+    binary: list, bits_per_track: int, database: str
 ) -> Generator:
+    
+    db_connection: Connection = sqlite3.connect(database)
+    db_cursor: Cursor = db_connection.cursor()
+
     for track_data in batch(binary, bits_per_track):
         if len(track_data) == bits_per_track:
-            yield lookup_id_in_db(track_data, cursor)
+            yield lookup_id_in_db(track_data, db_cursor)
         else:
             for byte in track_data:
-                yield lookup_id_in_db(byte, cursor)
+                yield lookup_id_in_db(byte, db_cursor)
+    
+    db_cursor.close()
+    db_connection.close()
 
 
 def lookup_id_in_db(binary: list, cursor: Cursor) -> str:
@@ -97,9 +104,6 @@ def write_to_playlist(
 
     file_binary: list[int] = get_binary(file=file, is_compressed=is_compressed)
 
-    db_connection: Connection = sqlite3.connect(lookup_db)
-    db_cursor: Cursor = db_connection.cursor()
-
     track_count = len(file_binary) // 13 + len(file_binary) % 13
     playlist_count = ceil(track_count / max_tracks_per_playlist)
 
@@ -112,7 +116,7 @@ def write_to_playlist(
     playlist_ids: list[str] = []
     for idx, playlist_batch in enumerate(
         batch(
-            split_binary_into_tracks(file_binary, bits_per_track, db_cursor),
+            split_binary_into_tracks(file_binary, bits_per_track, lookup_db),
             max_tracks_per_playlist,
         ),
         start=1,
@@ -133,7 +137,7 @@ def write_to_playlist(
     header_tracks = split_binary_into_tracks(
         File.bytes_to_binary(list(header_string.encode("utf-8"))),
         bits_per_track,
-        db_cursor,
+        lookup_db,
     )
 
     header_id = api_request_manager.send_request(
@@ -145,9 +149,6 @@ def write_to_playlist(
     api_request_manager.add_tracks_to_playlist(
         playlist=header_id, tracks=list(header_tracks)
     )
-
-    db_cursor.close()
-    db_connection.close()
 
     return header_id
 
