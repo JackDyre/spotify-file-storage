@@ -1,9 +1,7 @@
 import json
 import os
-import sqlite3
 import sys
 import time
-import gzip as gz
 
 import spotipy  # type: ignore
 from spotipy.oauth2 import SpotifyClientCredentials  # type: ignore
