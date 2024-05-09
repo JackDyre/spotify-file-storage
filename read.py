@@ -58,7 +58,7 @@ def read_from_playlist(
     lookup_db: str = "13bit_ids.db",
     confirm_read: bool = False,
     print_progress: bool = False,
-) -> str:
+) -> str | None:
 
     header_string: str = bytes(
         binary_to_bytes(read_binary_from_playlist(header_playlist, lookup_db))
@@ -66,6 +66,9 @@ def read_from_playlist(
 
     playlist_ids: list[str] = header_string.split("*")
     filename = playlist_ids.pop(0)
+
+    if confirm_read and not confirmation_prompt(playlist_ids):
+        return None
 
     file_binary: list[int] = []
     for playlist in playlist_ids:
@@ -94,5 +97,5 @@ def get_destination_directory():
 if __name__ == "__main__":
     header_playlist = input("Paste header playlist URL/ID:\n\n")
     destination = get_destination_directory()
-    file = read_from_playlist(header_playlist, destination)
+    file = read_from_playlist(header_playlist, destination, confirm_read=True)
     print(f"File successfully decoded and saved as {file}")
