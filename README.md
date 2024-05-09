@@ -25,7 +25,7 @@ Will open a file dialogue for you to select a file, then reads and converts the 
 python read.py
 ```
 
-Will prompt you for a header playlist ID, then open a file dialogue for you to select a destination directory, then reads and converts the Spotify track IDs to binary. Will write the file and the binary of the file in the selected directory.
+Will prompt you for a header playlist ID, then open a file dialogue for you to select a destination directory, then reads and converts the Spotify track IDs to binary. Will write the file to the selected directory.
 
 ## Dependencies
 
