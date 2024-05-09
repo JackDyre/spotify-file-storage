@@ -27,7 +27,7 @@ python read.py
 
 Will prompt you for a header playlist ID, then open a file dialogue for you to select a destination directory, then reads and converts the Spotify track IDs to binary. Will write the file and the binary of the file in the selected directory.
 
-### Dependencies
+## Dependencies
 
 Requires [spotipy](https://pypi.org/project/spotipy/) and [pyperclip](https://pypi.org/project/pyperclip/).
 
