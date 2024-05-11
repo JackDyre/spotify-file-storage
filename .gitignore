@@ -1,6 +1,7 @@
 # Directories
 __pycache__/
 .mypy_cache/
+cpy_venv/
 
 # Files
 api-credentials.txt

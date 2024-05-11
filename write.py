@@ -100,7 +100,6 @@ def lookup_id_in_db(binary: list, cursor: Cursor) -> str:
 
 
 def write_to_playlist(
-    file: File,
     is_compressed: bool = True,
     lookup_db: str = "13bit_ids.db",
     max_tracks_per_playlist: int = 9_988,
@@ -108,6 +107,8 @@ def write_to_playlist(
     print_progress: bool = True,
     confirm_write: bool = True,
 ) -> str | None:
+    
+    file = File(get_file_path())
 
     file_binary: list[int] = get_binary(file=file, is_compressed=is_compressed)
 
@@ -160,11 +161,13 @@ def write_to_playlist(
         playlist=header_id, tracks=list(header_tracks)
     )
 
+    pyperclip.copy(header_id)
+    if print_progress:
+        print("\nHeader playlist ID copied to clipboard")
+
     return header_id
 
 
-if __name__ == "__main__":
-    file = File(get_file_path())
-    header_playlist = write_to_playlist(file, confirm_write=True, print_progress=True)
-    pyperclip.copy(header_playlist)
-    print("\nHeader playlist ID copied to clipboard")
+if __name__ == "__main__":    
+    write_to_playlist(confirm_write=True, print_progress=True)
+    
