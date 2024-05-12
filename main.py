@@ -165,27 +165,21 @@ class File:
         self.path: str = file_path
         self.name: str = os.path.basename(file_path)
 
-    @property
-    def compressed_binary(self) -> list[int]:
+    def get_binary(self, compressed: bool = True) -> list[int]:
         with open(self.path, "rb") as f:
-            compressed_data = gz.compress(f.read())
+            if compressed:
+                compressed_data = list(gz.compress(f.read()))
+                return bytes_to_binary(list(compressed_data))
+            else:
+                return bytes_to_binary(list(f.read()))
 
-        return self.bytes_to_binary(list(compressed_data))
 
-    @property
-    def uncompressed_binary(self) -> list[int]:
-        with open(self.path, "rb") as f:
-            file_bytes = list(f.read())
+def bytes_to_binary(bytes: list[int]) -> list[int]:
+    binary: list[int] = []
+    for byte in bytes:
+        binary.extend(decimal_to_binary_padded(byte, 8))
 
-        return self.bytes_to_binary(file_bytes)
-
-    @staticmethod
-    def bytes_to_binary(bytes: list[int]) -> list[int]:
-        binary: list[int] = []
-        for byte in bytes:
-            binary.extend(decimal_to_binary_padded(byte, 8))
-
-        return binary
+    return binary
 
 
 def get_file_path():
@@ -196,9 +190,9 @@ def get_file_path():
 
 def get_binary(file: File, is_compressed: bool = True) -> list[int]:
     if is_compressed:
-        return file.compressed_binary
+        return file.get_binary(compressed=True)
     else:
-        return file.uncompressed_binary
+        return file.get_binary(compressed=False)
 
 
 def write_confirmation_prompt(track_count, playlist_count) -> bool:
@@ -283,7 +277,7 @@ def write_to_playlist(
 
     header_string = "*".join([file.name] + playlist_ids)
     header_tracks = split_binary_into_tracks(
-        File.bytes_to_binary(list(header_string.encode("utf-8"))),
+        bytes_to_binary(list(header_string.encode("utf-8"))),
         bits_per_track,
         lookup_db,
     )
@@ -417,7 +411,7 @@ class FileEnvironment:
                 items=[track["id"]],
             )
         new_tracks = split_binary_into_tracks(
-            File.bytes_to_binary(str(self.contents).encode("utf-8")), 13, "13bit_ids.db"
+            bytes_to_binary(str(self.contents).encode("utf-8")), 13, "13bit_ids.db"
         )
         api_request_manager.add_tracks_to_playlist(
             playlist=self.id, tracks=list(new_tracks)
@@ -466,7 +460,7 @@ if __name__ == "__main__":
 
     # y = {}
     # x = list(str(y).encode('utf-8'))
-    # z = File.bytes_to_binary(x)
+    # z = bytes_to_binary(x)
     # print(list(z))
     # v = split_binary_into_tracks(z, 13, '13bit_ids.db')
     # w = api_request_manager.send_request(api_request_manager.sp.user_playlist_create, user=api_request_manager.user_id, name="test", description="test")['id']

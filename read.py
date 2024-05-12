@@ -22,7 +22,10 @@ def read_binary_from_playlist(playlist: str, database: str) -> Generator:
                 f"{track['name']}{[artist['name'] for artist in track['artists']]}{track['album']['name']}",
             ),
         )
-        binary: list[int] | int = eval(db_cursor.fetchall()[0][0])
+        try: 
+            binary: list[int] | int = eval(db_cursor.fetchall()[0][0])
+        except IndexError:
+            print(f"{track['name']}{[artist['name'] for artist in track['artists']]}{track['album']['name']}")
         if type(binary) is int:
             binary = [binary]
         for bit in binary:  # type: ignore
