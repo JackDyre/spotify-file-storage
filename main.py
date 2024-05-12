@@ -63,6 +63,14 @@ def binary_bytes_conversion(binary: Iterable | list[int], conversion_type: str =
     raise ValueError("Invalid conversion type. Valid types are: 'binary_to_bytes' and 'bytes_to_binary'")
 
 
+def confirmation_prompt() -> bool:
+    confirmation = input("Confirm? (Y/N)\n")
+    print("\n")
+    if confirmation.upper() == "Y":
+        return True
+    return False
+
+
 class APIRequests:
     def __init__(self) -> None:
         self.recent_request: float = time.time()
@@ -199,16 +207,6 @@ def get_file_binary(file: File, is_compressed: bool = True) -> list[int]:
         return file.get_binary(compressed=False)
 
 
-def write_confirmation_prompt(track_count, playlist_count) -> bool:
-    print(f"\nTracks needed: {track_count}")
-    print(f"Playlists needed: {playlist_count}")
-    print(f"Time estimate: {ceil(track_count / 100)}s")
-    confirmation = input("Confirm? (Y/N)\n")
-    print("\n")
-    if confirmation.upper() == "Y":
-        return True
-    return False
-
 
 def split_binary_into_tracks(
     binary: list, bits_per_track: int, database: str
@@ -250,8 +248,13 @@ def upload_to_spotify(
     track_count = len(file_binary) // 13 + len(file_binary) % 13
     playlist_count = ceil(track_count / max_tracks_per_playlist)
 
-    if confirm_write and not write_confirmation_prompt(track_count, playlist_count):
-        return None
+    if confirm_write:
+        print(f"\nTracks needed: {track_count}")
+        print(f"Playlists needed: {playlist_count}")
+        print(f"Time estimate: {ceil(track_count / 100)}s")
+        if not confirmation_prompt():
+            sys.exit()
+
 
     playlist_ids: list[str] = []
     for idx, playlist_batch in enumerate(
@@ -333,20 +336,6 @@ def read_binary_from_playlist(playlist: str, database: str) -> Generator:
 
 
 
-def read_confirmation_prompt(playlist_ids: list[str]) -> bool:
-    total_tracks: int = 0
-    for playlist in playlist_ids:
-        total_tracks += api_request_manager.send_request(
-            request=api_request_manager.sp.playlist, playlist_id=playlist
-        )["tracks"]["total"]
-
-    print(f"Total tracks: {total_tracks}")
-    print(f"Time estimate: {ceil(total_tracks / 100)}s")
-    confirmation = input("Confirm (Y/N)\n")
-    if confirmation.upper() == "Y":
-        return True
-    return False
-
 
 def read_from_playlist(
     header_playlist: str,
@@ -363,8 +352,17 @@ def read_from_playlist(
     playlist_ids: list[str] = header_string.split("*")
     filename = playlist_ids.pop(0)
 
-    if confirm_read and not read_confirmation_prompt(playlist_ids):
-        return None
+    if confirm_read:
+        total_tracks: int = 0
+        for playlist in playlist_ids:
+            total_tracks += api_request_manager.send_request(
+                request=api_request_manager.sp.playlist, playlist_id=playlist
+            )["tracks"]["total"]
+
+        print(f"Total tracks: {total_tracks}")
+        print(f"Time estimate: {ceil(total_tracks / 100)}s")
+        if not confirmation_prompt():
+            sys.exit()
 
     file_binary: list[int] = []
     for playlist in playlist_ids:
@@ -451,4 +449,4 @@ def read_from_playlist(
 api_request_manager: APIRequests = APIRequests()
 
 if __name__ == "__main__":
-    upload_to_spotify()
+    read_from_playlist('https://open.spotify.com/playlist/6ab1DUCnKqPMDxGLHQExJH?si=aa20a6c686084ff3', open_file_dialog(dialog_type="directory"), confirm_read=True)
