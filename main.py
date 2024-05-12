@@ -110,15 +110,15 @@ class APIRequests:
         return tracks
 
     def add_tracks_to_playlist(
-        self, playlist: str, tracks: list, print_progress: bool = False
+        self, playlist: str, tracks: list[str], print_progress: bool = False
     ) -> None:
         for idx, track_batch in enumerate(batch(tracks, 100)):
             if print_progress:
                 print_progress_bar(idx, len(list(batch(tracks, 100))))
             self.send_request(
                 request=self.sp.user_playlist_add_tracks,
-                user=self.user_id,
                 playlist_id=playlist,
+                user = self.user_id,
                 tracks=track_batch,
             )
 
