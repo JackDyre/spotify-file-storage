@@ -17,40 +17,18 @@ from spotipy.oauth2 import SpotifyClientCredentials  # type: ignore
 from spotipy.oauth2 import SpotifyOAuth
 
 
-def print_progress_bar(iteration, total):
-    """
-    Call in a loop to create terminal progress bar.
-    :param iteration: current iteration (Int)
-    :param total: total iterations (Int)
-    :param prefix: prefix string (Str)
-    :param suffix: suffix string (Str)
-    :param length: character length of bar (Int)
-    :param fill: bar fill character (Str)
-    :return: None
-    """
-    prefix = ""
-    suffix = ""
-    length = 50
-    fill = "X"
-
+def print_progress_bar(iteration, total, prefix="", suffix="", length=50, fill="X"):
     percent = ("{0:.1f}").format(100 * ((iteration + 1) / float(total)))
     filled_length = int(length * (iteration + 1) // total)
     bar = fill * filled_length + "-" * (length - filled_length)
-    sys.stdout.write("\r%s |%s| %s%% %s" % (prefix, bar, percent, suffix)),
-    sys.stdout.flush()
+    print(f"\r{prefix} |{bar}| {percent}% {suffix}", end="")
     if iteration + 1 == total:
-        sys.stdout.write("\n")
-        sys.stdout.flush()
+        print()
 
 
 def decimal_to_binary_padded(decimal, pad):
-    binary = ""
-    while decimal > 0:
-        remainder = decimal % 2
-        binary = str(remainder) + binary
-        decimal = decimal // 2
-    binary = binary.zfill(pad)
-    return [int(bit) for bit in binary]
+    binary = bin(decimal)[2:]
+    return [int(bit) for bit in binary.zfill(pad)]
 
 
 def batch(iterable, batch_size):
@@ -152,10 +130,11 @@ class APIRequests:
             )
             offset += 50
 
-            for playlist in playlist_batch.get("items", []):
-                if playlist.get('owner', {}).get('id') != self.user_id:
-                    continue
-                playlists.append(playlist)
+            playlists.extend(
+                playlist
+                for playlist in playlist_batch.get("items", [])
+                if playlist.get("owner", {}).get("id") == self.user_id
+            )
 
             if not playlist_batch.get("next"):
                 break
@@ -173,6 +152,11 @@ class APIRequests:
             print(e)
             return None
 
+# -------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
 
 
 class File:
@@ -183,15 +167,9 @@ class File:
     @property
     def compressed_binary(self) -> list[int]:
         with open(self.path, "rb") as f:
-            with gz.open("temp_archive.gz", "wb") as temp_archive:
-                temp_archive.writelines(f)
+            compressed_data = gz.compress(f.read())
 
-        with open("temp_archive.gz", "rb") as f:  # type: ignore
-            file_bytes = list(f.read())
-
-        os.remove("temp_archive.gz")
-
-        return self.bytes_to_binary(file_bytes)
+        return self.bytes_to_binary(list(compressed_data))
 
     @property
     def uncompressed_binary(self) -> list[int]:
@@ -325,6 +303,15 @@ def write_to_playlist(
 
     return header_id
 
+
+# -------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
+
+
+
 def read_binary_from_playlist(playlist: str, database: str) -> Generator:
     db_connection: Connection = sqlite3.connect(database)
     db_cursor: Cursor = db_connection.cursor()
@@ -409,17 +396,27 @@ def get_destination_directory():
     return filedialog.askdirectory()
 
 
+# -------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
+
+
+
 class FileEnvironment:
-    def __init__(self) -> None:
+    def __init__(self, id: str) -> None:
         self.contents: dict[str, str | dict] = {}
+        self.id: str = id
 
-    @classmethod
-    def read(cls, environment_playlist: str, passkey: str):
-        if api_request_manager.send_request(request=api_request_manager.sp.playlist, playlist_id=environment_playlist)['description'] == sha256_encrypt(passkey):
-            env = cls()
-        return None
-
-
+    def update(self):
+        old_tracks = api_request_manager.get_playlist_tracks(playlist=self.id)
+        for track in old_tracks:
+            api_request_manager.send_request(
+                api_request_manager.sp.playlist_remove_all_occurrences_of_items, playlist_id=self.id, items=[track['id']],
+            )
+        new_tracks = split_binary_into_tracks(File.bytes_to_binary(str(self.contents).encode('utf-8')), 13, '13bit_ids.db')
+        api_request_manager.add_tracks_to_playlist(playlist=self.id, tracks=list(new_tracks))
 def sha256_encrypt(data):
     data_str = str(data)
     return hashlib.sha256(data_str.encode()).hexdigest()
@@ -431,15 +428,49 @@ def file_envirnment_search() -> FileEnvironment:
 
     user_playlists = api_request_manager.get_user_playlists()
     for playlist in user_playlists:
-        if playlist["name"] == sha256_encrypt('spotify-file-storage-environment'):
-            env = FileEnvironment.read(playlist['id'], environment_passkey)
-            if env:
-                return env
-    return FileEnvironment()
+        if playlist["name"] == sha256_encrypt('spotify-file-storage-environment') and playlist['description'] == sha256_encrypt(environment_passkey):
+            env = FileEnvironment(playlist['id'])
+            z = read_binary_from_playlist(playlist['id'], '13bit_ids.db')
+            y = bytes(z)
+            x = y.decode('utf-8')
+            print(x)
+            env.contents = eval(x)
+            return env
+    print("No file environment found\n\nCreating new file environment...")
+    env_id = api_request_manager.send_request(
+        api_request_manager.sp.user_playlist_create,
+        user=api_request_manager.user_id,
+        name=sha256_encrypt('spotify-file-storage-environment'),
+        description=sha256_encrypt(environment_passkey),
+    )['id']
+    env = FileEnvironment(env_id)
+    env.update()
+    return env
 
 api_request_manager: APIRequests = APIRequests()
 
 if __name__ == "__main__":
+    # x = file_envirnment_search()
+    # print(x.contents)
+
+
+    # y = {}
+    # x = list(str(y).encode('utf-8'))
+    # z = File.bytes_to_binary(x)
+    # print(list(z))
+    # v = split_binary_into_tracks(z, 13, '13bit_ids.db')
+    # w = api_request_manager.send_request(api_request_manager.sp.user_playlist_create, user=api_request_manager.user_id, name="test", description="test")['id']
+    # api_request_manager.add_tracks_to_playlist(playlist=w, tracks=list(v ))
+
+
+    # b = read_binary_from_playlist('https://open.spotify.com/playlist/7vKHGYtVO3JkoUTMgefCfy?si=9238e7b3057e4c6c', '13bit_ids.db')
+    # by = binary_to_bytes(b)
+    # q = bytes(by).decode('utf-8')
+    # x = dict(q)
+    # print(type(q))
+
     pass
 
-
+    x = api_request_manager.get_user_playlists()
+    for i in x:
+        print(i['name'])
