@@ -123,22 +123,20 @@ class APIRequests:
             )
 
     def get_user_playlists(self) -> list[dict]:
-        offset: int = 0
         playlists: list[dict] = []
+        offset = 0
         while True:
             playlist_batch = self.send_request(
-                request=self.sp.current_user_playlists,
-                offset=offset,
+                self.sp.current_user_playlists, offset=offset
             )
-            offset += 50
-
             playlists.extend(
                 playlist
                 for playlist in playlist_batch.get("items", [])
                 if playlist.get("owner", {}).get("id") == self.user_id
             )
-
-            if not playlist_batch.get("next"):
+            if playlist_batch.get("next"):
+                offset += 50
+            else:
                 break
         return playlists
 
