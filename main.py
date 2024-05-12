@@ -50,17 +50,25 @@ def open_file_dialog(dialog_type: str) -> str:
     root.withdraw()
     if dialog_type == "directory":
         return filedialog.askdirectory()
-    if dialog_type =="file":
+    if dialog_type == "file":
         return filedialog.askopenfilename()
     raise ValueError("Invalid filedialog type")
 
 
-def binary_bytes_conversion(binary: Iterable | list[int], conversion_type: str = "binary_to_bytes") -> list[int]:
+def binary_bytes_conversion(
+    binary: Iterable | list[int], conversion_type: str = "binary_to_bytes"
+) -> list[int]:
     if conversion_type == "binary_to_bytes":
-        return list(bytearray(int(''.join(map(str, byte)), 2) for byte in batch(binary, 8)))
+        return list(
+            bytearray(int("".join(map(str, byte)), 2) for byte in batch(binary, 8))
+        )
     elif conversion_type == "bytes_to_binary":
-        return [int(bit) for byte in bytearray(binary) for bit in bin(byte)[2:].zfill(8)]
-    raise ValueError("Invalid conversion type. Valid types are: 'binary_to_bytes' and 'bytes_to_binary'")
+        return [
+            int(bit) for byte in bytearray(binary) for bit in bin(byte)[2:].zfill(8)
+        ]
+    raise ValueError(
+        "Invalid conversion type. Valid types are: 'binary_to_bytes' and 'bytes_to_binary'"
+    )
 
 
 def confirmation_prompt() -> bool:
@@ -144,7 +152,7 @@ class APIRequests:
             self.send_request(
                 request=self.sp.user_playlist_add_tracks,
                 playlist_id=playlist,
-                user = self.user_id,
+                user=self.user_id,
                 tracks=track_batch,
             )
 
@@ -207,18 +215,23 @@ def get_file_binary(file: File, is_compressed: bool = True) -> list[int]:
         return file.get_binary(compressed=False)
 
 
-
 def split_binary_into_tracks(
     binary: list, bits_per_track: int, database: str
 ) -> Generator:
-    
+
     with sqlite3.connect(database) as db_connection:
 
         db_cursor: Cursor = db_connection.cursor()
 
         for track_data in batch(binary, bits_per_track):
             if len(track_data) == bits_per_track:
-                yield lookup_id_in_db(track_data, db_cursor)
+                yield db_query(
+                    output_column="track_id",
+                    reference_column="binary",
+                    query=str(track_data),
+                    table="_13bit_ids",
+                    cursor=db_cursor,
+                )
             else:
                 for byte in track_data:
                     yield lookup_id_in_db(byte, db_cursor)
@@ -226,9 +239,18 @@ def split_binary_into_tracks(
         db_cursor.close()
 
 
+def db_query(
+    output_column: str, reference_column: str, query: str, table: str, cursor: Cursor
+) -> str:
+    cursor.execute(
+        f"SELECT {output_column} FROM {table} WHERE {reference_column} = ?", (query,)
+    )
+    return cursor.fetchone()[0]
+
+
 def lookup_id_in_db(binary: list, cursor: Cursor) -> str:
-    cursor.execute("SELECT * FROM _13bit_ids WHERE binary = ?", (str(binary),))
-    track_id = cursor.fetchall()[0][1]
+    cursor.execute("SELECT track_id FROM _13bit_ids WHERE binary = ?", (str(binary),))
+    track_id = cursor.fetchone()[0]
     return track_id
 
 
@@ -254,7 +276,6 @@ def upload_to_spotify(
         print(f"Time estimate: {ceil(track_count / 100)}s")
         if not confirmation_prompt():
             sys.exit()
-
 
     playlist_ids: list[str] = []
     for idx, playlist_batch in enumerate(
@@ -320,12 +341,12 @@ def read_binary_from_playlist(playlist: str, database: str) -> Generator:
     tracks: list[dict] = api_request_manager.get_playlist_tracks(playlist)
     for track in tracks:
         db_cursor.execute(
-            "SELECT * FROM _13bit_ids WHERE track_identifier = ?",
+            "SELECT binary FROM _13bit_ids WHERE track_identifier = ?",
             (
                 f"{track['name']}{[artist['name'] for artist in track['artists']]}{track['album']['name']}",
             ),
         )
-        binary: list[int] | int = eval(db_cursor.fetchall()[0][0])
+        binary: list[int] | int = eval(db_cursor.fetchone()[0])
         if type(binary) is int:
             binary = [binary]
         for bit in binary:  # type: ignore
@@ -333,8 +354,6 @@ def read_binary_from_playlist(playlist: str, database: str) -> Generator:
 
     db_cursor.close()
     db_connection.close()
-
-
 
 
 def read_from_playlist(
@@ -346,7 +365,9 @@ def read_from_playlist(
 ) -> str | None:
 
     header_string: str = bytes(
-        binary_bytes_conversion(read_binary_from_playlist(header_playlist, lookup_db), "binary_to_bytes")
+        binary_bytes_conversion(
+            read_binary_from_playlist(header_playlist, lookup_db), "binary_to_bytes"
+        )
     ).decode("utf-8")
 
     playlist_ids: list[str] = header_string.split("*")
@@ -380,8 +401,6 @@ def read_from_playlist(
     os.remove(f"{filename}.gz")
 
     return f"{destination}/{filename}"
-
-
 
 
 # -------------------------------------------------------------------------------------
@@ -449,4 +468,8 @@ def read_from_playlist(
 api_request_manager: APIRequests = APIRequests()
 
 if __name__ == "__main__":
-    read_from_playlist('https://open.spotify.com/playlist/6ab1DUCnKqPMDxGLHQExJH?si=aa20a6c686084ff3', open_file_dialog(dialog_type="directory"), confirm_read=True)
+    read_from_playlist(
+        header_playlist=input("Paste header playlist URL/ID:\n\n"),
+        destination=open_file_dialog("directory"),
+    )
+    # upload_to_spotify()
