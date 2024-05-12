@@ -50,7 +50,9 @@ def open_file_dialog(dialog_type: str) -> str:
     root.withdraw()
     if dialog_type == "directory":
         return filedialog.askdirectory()
-    return filedialog.askopenfilename()
+    if dialog_type =="file":
+        return filedialog.askopenfilename()
+    raise ValueError("Invalid filedialog type")
 
 
 def binary_bytes_conversion(binary: Iterable | list[int], conversion_type: str = "binary_to_bytes") -> list[int]:
@@ -449,4 +451,4 @@ def read_from_playlist(
 api_request_manager: APIRequests = APIRequests()
 
 if __name__ == "__main__":
-    pass
+    upload_to_spotify()
