@@ -79,6 +79,15 @@ def confirmation_prompt() -> bool:
     return False
 
 
+def db_query(
+    output_column: str, reference_column: str, query: str, table: str, cursor: Cursor
+) -> str:
+    cursor.execute(
+        f"SELECT {output_column} FROM {table} WHERE {reference_column} = ?", (query,)
+    )
+    return cursor.fetchone()[0]
+
+
 class APIRequests:
     def __init__(self) -> None:
         self.recent_request: float = time.time()
@@ -187,13 +196,6 @@ class APIRequests:
             return None
 
 
-# -------------------------------------------------------------------------------------
-# -------------------------------------------------------------------------------------
-# -------------------------------------------------------------------------------------
-# -------------------------------------------------------------------------------------
-# -------------------------------------------------------------------------------------
-
-
 class File:
     def __init__(self, file_path: str) -> None:
         self.path: str = file_path
@@ -208,11 +210,11 @@ class File:
                 return binary_bytes_conversion(list(f.read()), "bytes_to_binary")
 
 
-def get_file_binary(file: File, is_compressed: bool = True) -> list[int]:
-    if is_compressed:
-        return file.get_binary(compressed=True)
-    else:
-        return file.get_binary(compressed=False)
+# -------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
 
 
 def split_binary_into_tracks(
@@ -234,27 +236,19 @@ def split_binary_into_tracks(
                 )
             else:
                 for byte in track_data:
-                    yield lookup_id_in_db(byte, db_cursor)
-
+                    yield db_query(
+                        output_column="track_id",
+                        reference_column="binary",
+                        query=str(byte),
+                        table="_13bit_ids",
+                        cursor=db_cursor,
+                    )
+        
         db_cursor.close()
 
 
-def db_query(
-    output_column: str, reference_column: str, query: str, table: str, cursor: Cursor
-) -> str:
-    cursor.execute(
-        f"SELECT {output_column} FROM {table} WHERE {reference_column} = ?", (query,)
-    )
-    return cursor.fetchone()[0]
-
-
-def lookup_id_in_db(binary: list, cursor: Cursor) -> str:
-    cursor.execute("SELECT track_id FROM _13bit_ids WHERE binary = ?", (str(binary),))
-    track_id = cursor.fetchone()[0]
-    return track_id
-
-
 def upload_to_spotify(
+    file_path: str | None = None,
     is_compressed: bool = True,
     lookup_db: str = "13bit_ids.db",
     max_tracks_per_playlist: int = 9_985,
@@ -263,9 +257,12 @@ def upload_to_spotify(
     confirm_write: bool = True,
 ) -> str | None:
 
-    file = File(open_file_dialog(dialog_type="file"))
+    file = File(file_path or open_file_dialog(dialog_type="file"))
 
-    file_binary: list[int] = get_file_binary(file=file, is_compressed=is_compressed)
+    if is_compressed:
+        file_binary = file.get_binary(compressed=True)
+    if not is_compressed:
+        file_binary = file.get_binary(compressed=False)
 
     track_count = len(file_binary) // 13 + len(file_binary) % 13
     playlist_count = ceil(track_count / max_tracks_per_playlist)
@@ -340,13 +337,14 @@ def read_binary_from_playlist(playlist: str, database: str) -> Generator:
 
     tracks: list[dict] = api_request_manager.get_playlist_tracks(playlist)
     for track in tracks:
-        db_cursor.execute(
-            "SELECT binary FROM _13bit_ids WHERE track_identifier = ?",
-            (
-                f"{track['name']}{[artist['name'] for artist in track['artists']]}{track['album']['name']}",
-            ),
+        binary_str : str = db_query(
+            output_column="binary",
+            reference_column="track_identifier",
+            query=f"{track['name']}{[artist['name'] for artist in track['artists']]}{track['album']['name']}",
+            table="_13bit_ids",
+            cursor=db_cursor,
         )
-        binary: list[int] | int = eval(db_cursor.fetchone()[0])
+        binary: list[int] | int = eval(binary_str)
         if type(binary) is int:
             binary = [binary]
         for bit in binary:  # type: ignore
@@ -410,66 +408,18 @@ def read_from_playlist(
 # -------------------------------------------------------------------------------------
 
 
-# class FileEnvironment:
-#     def __init__(self, id: str) -> None:
-#         self.contents: dict[str, str | dict] = {}
-#         self.id: str = id
-
-#     def update(self):
-#         old_tracks = api_request_manager.get_playlist_tracks(playlist=self.id)
-#         for track in old_tracks:
-#             api_request_manager.send_request(
-#                 api_request_manager.sp.playlist_remove_all_occurrences_of_items,
-#                 playlist_id=self.id,
-#                 items=[track["id"]],
-#             )
-#         new_tracks = split_binary_into_tracks(
-#             bytes_to_binary(str(self.contents).encode("utf-8")), 13, "13bit_ids.db"
-#         )
-#         api_request_manager.add_tracks_to_playlist(
-#             playlist=self.id, tracks=list(new_tracks)
-#         )
-
-
 # def sha256_encrypt(data):
 #     data_str = str(data)
 #     return hashlib.sha256(data_str.encode()).hexdigest()
 
 
-# def file_envirnment_search() -> FileEnvironment:
-#     environment_name = input("Environment name?\n")
-#     environment_password = input("Environment password?\n")
-#     environment_passkey = "".join([environment_name, environment_password])
-
-#     user_playlists = api_request_manager.get_user_playlists()
-#     for playlist in user_playlists:
-#         if playlist["name"] == sha256_encrypt(
-#             "spotify-file-storage-environment"
-#         ) and playlist["description"] == sha256_encrypt(environment_passkey):
-#             env = FileEnvironment(playlist["id"])
-#             z = read_binary_from_playlist(playlist["id"], "13bit_ids.db")
-#             y = bytes(z)
-#             x = y.decode("utf-8")
-#             print(x)
-#             env.contents = eval(x)
-#             return env
-#     print("No file environment found\n\nCreating new file environment...")
-#     env_id = api_request_manager.send_request(
-#         api_request_manager.sp.user_playlist_create,
-#         user=api_request_manager.user_id,
-#         name=sha256_encrypt("spotify-file-storage-environment"),
-#         description=sha256_encrypt(environment_passkey),
-#     )["id"]
-#     env = FileEnvironment(env_id)
-#     env.update()
-#     return env
-
 
 api_request_manager: APIRequests = APIRequests()
 
 if __name__ == "__main__":
-    read_from_playlist(
-        header_playlist=input("Paste header playlist URL/ID:\n\n"),
-        destination=open_file_dialog("directory"),
-    )
+    # read_from_playlist(
+    #     header_playlist=input("Paste header playlist URL/ID:\n\n"),
+    #     destination=open_file_dialog("directory"),
+    # )
     # upload_to_spotify()
+    pass
