@@ -12,8 +12,8 @@ from tkinter import filedialog
 from typing import Generator, Iterable
 
 import pyperclip
-import spotipy  # type: ignore
-from spotipy.oauth2 import SpotifyClientCredentials  # type: ignore
+import spotipy
+from spotipy.oauth2 import SpotifyClientCredentials
 from spotipy.oauth2 import SpotifyOAuth
 
 
@@ -333,7 +333,7 @@ def read_binary_from_playlist(playlist: str, database: str) -> Generator:
     db_connection.close()
 
 
-def get_bytes_from_spotify(playlist_ids: list[str], database: str) -> list[int]:
+def get_bytes_from_spotify(playlist_ids: list[str], database: str = "13bit_ids.db") -> list[int]:
     binary: list[int] = []
     with sqlite3.connect(database) as db_connection:
         db_cursor: Cursor = db_connection.cursor()
@@ -353,7 +353,7 @@ def get_bytes_from_spotify(playlist_ids: list[str], database: str) -> list[int]:
                 else:
                     binary.append(track_binary)
 
-    return binary
+    return binary_bytes_conversion(binary, "binary_to_bytes")
 
 
 def download_from_spotify(
@@ -363,6 +363,8 @@ def download_from_spotify(
         is_confirm_read: bool = True,
         is_print_progress: bool = True,
 ) -> None:
+
+    header_bytes = get_bytes_from_spotify([header_playlist_id])
     raise NotImplemented
 
 
