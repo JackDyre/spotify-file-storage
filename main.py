@@ -18,7 +18,7 @@ from spotipy.oauth2 import SpotifyOAuth
 
 
 def print_progress_bar(iteration, total, prefix="", suffix="", length=50, fill="X"):
-    percent = ("{0:.1f}").format(100 * ((iteration + 1) / float(total)))
+    percent = "{0:.1f}".format(100 * ((iteration + 1) / float(total)))
     filled_length = int(length * (iteration + 1) // total)
     bar = fill * filled_length + "-" * (length - filled_length)
     print(f"\r{prefix} |{bar}| {percent}% {suffix}", end="")
@@ -56,7 +56,8 @@ def open_file_dialog(dialog_type: str) -> str:
 
 
 def binary_bytes_conversion(
-    binary: Iterable | list[int], conversion_type: str) -> list[int]:
+        binary: Iterable | list[int], conversion_type: str
+) -> list[int]:
     if conversion_type == "binary_to_bytes":
         return list(
             bytearray(int("".join(map(str, byte)), 2) for byte in batch(binary, 8))
@@ -79,7 +80,7 @@ def confirmation_prompt() -> bool:
 
 
 def db_query(
-    output_column: str, reference_column: str, query: str, table: str, cursor: Cursor
+        output_column: str, reference_column: str, query: str, table: str, cursor: Cursor
 ) -> str:
     cursor.execute(
         f"SELECT {output_column} FROM {table} WHERE {reference_column} = ?", (query,)
@@ -93,17 +94,18 @@ class APIRequests:
         self.sp: spotipy.Spotify = self.create_client()
         self.user_id: str = self.send_request(request=self.sp.current_user)["id"]
 
-    def create_client(self) -> spotipy.Spotify:
+    @staticmethod
+    def create_client() -> spotipy.Spotify:
         try:
             with open("api-credentials.json", "r") as f:
                 api_dict = json.load(f)
             client_id = api_dict["cl-id"]
-            client_secret = api_dict["cl-secr"]
+            client_secret = api_dict["cl-secret"]
         except FileNotFoundError:
             client_id = input("Client ID?\n")
             client_secret = input("Client Secret?\n")
             with open("api-credentials.json", "w") as f:
-                json.dump({"cl-id": client_id, "cl-secr": client_secret}, f)
+                json.dump(obj={"cl-id": client_id, "cl-secret": client_secret}, fp=f)
 
         try:
             spotipy.Spotify(
@@ -135,33 +137,28 @@ class APIRequests:
         tracks: list[dict] = []
         while True:
             track_batch = self.send_request(
-                request=self.sp.user_playlist_tracks,
-                user=self.user_id,
+                request=self.sp.playlist_items,
                 playlist_id=playlist,
                 offset=offset,
                 market="US",
             )
             offset += 100
-
             for track in track_batch["items"]:
                 tracks.append(track["track"])
-
             if not track_batch["next"]:
                 break
-
         return tracks
 
     def add_tracks_to_playlist(
-        self, playlist: str, tracks: list[str], print_progress: bool = False
+            self, playlist: str, tracks: list[str], print_progress: bool = False
     ) -> None:
         for idx, track_batch in enumerate(batch(tracks, 100)):
             if print_progress:
                 print_progress_bar(idx, len(list(batch(tracks, 100))))
             self.send_request(
-                request=self.sp.user_playlist_add_tracks,
+                request=self.sp.playlist_add_items,
                 playlist_id=playlist,
-                user=self.user_id,
-                tracks=track_batch,
+                items=track_batch,
             )
 
     def get_user_playlists(self) -> list[dict]:
@@ -209,27 +206,25 @@ class File:
                 return list(f.read())
 
 
-# -------------------------------------------------------------------------------------
-# -------------------------------------------------------------------------------------
-# -------------------------------------------------------------------------------------
-# -------------------------------------------------------------------------------------
-# -------------------------------------------------------------------------------------
+def sha256_encrypt(data):
+    data_str = str(data)
+    return hashlib.sha256(data_str.encode()).hexdigest()
 
 
 def upload_to_spotify(
-    file_path: str | None = None,
-    is_compressed: bool = True,
-    track_id_database: str = "13bit_ids.db",
-    max_playlist_size: int = 10_001 - 13,
-    bits_per_track: int = 13,
-    is_print_progress: bool = True,
-    is_confirmation_prompt: bool = True,
+        file_path: str | None = None,
+        is_compressed: bool = True,
+        track_id_database: str = "13bit_ids.db",
+        max_playlist_size: int = 10_001 - 13,
+        bits_per_track: int = 13,
+        is_print_progress: bool = True,
+        is_confirmation_prompt: bool = True,
 ) -> str:
     file = File(file_path or open_file_dialog(dialog_type="file"))
     file_bytes = file.get_bytes(compressed=is_compressed)
 
     playlist_ids = add_bytes_to_spotify(
-        bytes=file_bytes,
+        bytes_to_add=file_bytes,
         bits_per_track=bits_per_track,
         max_playlist_size=max_playlist_size,
         track_id_database=track_id_database,
@@ -238,22 +233,24 @@ def upload_to_spotify(
     header_string = "*".join([file.name] + playlist_ids)
     header_bytes = list(header_string.encode("utf-8"))
     header_playlist_id = add_bytes_to_spotify(
-        bytes=header_bytes,
+        bytes_to_add=header_bytes,
         bits_per_track=bits_per_track,
         max_playlist_size=max_playlist_size,
         track_id_database=track_id_database,
+        name=f"{file.path} Header"
     )
 
     return header_playlist_id[0]
 
 
 def add_bytes_to_spotify(
-    bytes: list[int],
-    bits_per_track: int,
-    max_playlist_size: int,
-    track_id_database: str,
+        bytes_to_add: list[int],
+        bits_per_track: int,
+        max_playlist_size: int,
+        track_id_database: str,
+        name: str = time.time()
 ) -> list[str]:
-    binary = binary_bytes_conversion(bytes, conversion_type="bytes_to_binary")
+    binary = binary_bytes_conversion(bytes_to_add, conversion_type="bytes_to_binary")
     track_ids: list[str] = []
     with sqlite3.connect(track_id_database) as db_connection:
         db_cursor: Cursor = db_connection.cursor()
@@ -287,7 +284,7 @@ def add_bytes_to_spotify(
             api_request_manager.send_request(
                 request=api_request_manager.sp.user_playlist_create,
                 user=api_request_manager.user_id,
-                name=sha256_encrypt(time.time()),
+                name=sha256_encrypt(name),
             )["id"]
         )
         api_request_manager.add_tracks_to_playlist(playlist_ids[-1], chunk)
@@ -326,13 +323,12 @@ def read_binary_from_playlist(playlist: str, database: str) -> Generator:
 
 
 def read_from_playlist(
-    header_playlist: str,
-    destination: str,
-    lookup_db: str = "13bit_ids.db",
-    confirm_read: bool = False,
-    print_progress: bool = False,
+        header_playlist: str,
+        destination: str,
+        lookup_db: str = "13bit_ids.db",
+        confirm_read: bool = False,
+        print_progress: bool = False,
 ) -> str | None:
-
     header_string: str = bytes(
         binary_bytes_conversion(
             read_binary_from_playlist(header_playlist, lookup_db), "binary_to_bytes"
@@ -377,11 +373,6 @@ def read_from_playlist(
 # -------------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------------
-
-
-def sha256_encrypt(data):
-    data_str = str(data)
-    return hashlib.sha256(data_str.encode()).hexdigest()
 
 
 api_request_manager: APIRequests = APIRequests()
