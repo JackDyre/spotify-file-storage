@@ -7,9 +7,9 @@ import sys
 import time
 import tkinter as tk
 from math import ceil
-from sqlite3 import Connection, Cursor
+from sqlite3 import Cursor
 from tkinter import filedialog
-from typing import Generator, Iterable
+from typing import Iterable
 
 import pyperclip
 import spotipy
@@ -55,7 +55,7 @@ def open_file_dialog(dialog_type: str) -> str:
 
 
 def binary_bytes_conversion(
-    binary: Iterable | list[int], conversion_type: str
+        binary: Iterable | list[int], conversion_type: str
 ) -> list[int]:
     if conversion_type == "binary_to_bytes":
         return list(
@@ -71,7 +71,7 @@ def binary_bytes_conversion(
 
 
 def db_query(
-    output_column: str, reference_column: str, query: str, table: str, cursor: Cursor
+        output_column: str, reference_column: str, query: str, table: str, cursor: Cursor
 ) -> str:
     cursor.execute(
         f"SELECT {output_column} FROM {table} WHERE {reference_column} = ?", (query,)
@@ -124,7 +124,7 @@ class APIRequests:
         return sp
 
     def get_playlist_tracks(
-        self, playlist: str, print_progress: bool = True
+            self, playlist: str, print_progress: bool = True
     ) -> list[dict]:
         offset: int = 0
         tracks: list[dict] = []
@@ -148,7 +148,7 @@ class APIRequests:
         return tracks
 
     def add_tracks_to_playlist(
-        self, playlist: str, tracks: list[str], print_progress: bool = False
+            self, playlist: str, tracks: list[str], print_progress: bool = False
     ) -> None:
         for idx, track_batch in enumerate(batch(tracks, 100)):
             if print_progress:
@@ -210,19 +210,19 @@ def sha256_encrypt(data):
 
 
 def upload_to_spotify(
-    file_path: str | None = None,
-    is_compressed: bool = True,
-    track_id_database: str = "13bit_ids.db",
-    max_playlist_size: int = 10_001 - 13,
-    bits_per_track: int = 13,
-    is_print_progress: bool = True,
-    is_confirmation_prompt: bool = True,
+        file_path: str | None = None,
+        is_compressed: bool = True,
+        track_id_database: str = "13bit_ids.db",
+        max_playlist_size: int = 10_001 - 13,
+        bits_per_track: int = 13,
+        is_print_progress: bool = True,
+        is_confirmation_prompt: bool = True,
 ) -> str:
     file: File = File(file_path or open_file_dialog(dialog_type="file"))
     file_bytes: list[int] = file.get_bytes(compressed=is_compressed)
 
     track_count: int = (8 * len(file_bytes)) // bits_per_track + (
-        8 * len(file_bytes)
+            8 * len(file_bytes)
     ) % bits_per_track
     playlist_count: int = ceil(track_count / max_playlist_size)
     if is_confirmation_prompt:
@@ -258,12 +258,12 @@ def upload_to_spotify(
 
 
 def add_bytes_to_spotify(
-    bytes_to_add: list[int],
-    bits_per_track: int,
-    max_playlist_size: int,
-    track_id_database: str,
-    name: str = str(time.time()),
-    print_progress: bool = True,
+        bytes_to_add: list[int],
+        bits_per_track: int,
+        max_playlist_size: int,
+        track_id_database: str,
+        name: str = str(time.time()),
+        print_progress: bool = True,
 ) -> list[str]:
     binary = binary_bytes_conversion(bytes_to_add, conversion_type="bytes_to_binary")
     track_ids: list[str] = []
@@ -309,40 +309,10 @@ def add_bytes_to_spotify(
     return playlist_ids
 
 
-# -------------------------------------------------------------------------------------
-# -------------------------------------------------------------------------------------
-# -------------------------------------------------------------------------------------
-# -------------------------------------------------------------------------------------
-# -------------------------------------------------------------------------------------
-
-
-def read_binary_from_playlist(playlist: str, database: str) -> Generator:
-    db_connection: Connection = sqlite3.connect(database)
-    db_cursor: Cursor = db_connection.cursor()
-
-    tracks: list[dict] = api_request_manager.get_playlist_tracks(playlist)
-    for track in tracks:
-        binary_str: str = db_query(
-            output_column="binary",
-            reference_column="track_identifier",
-            query=f"{track['name']}{[artist['name'] for artist in track['artists']]}{track['album']['name']}",
-            table="_13bit_ids",
-            cursor=db_cursor,
-        )
-        binary: list[int] | int = eval(binary_str)
-        if type(binary) is int:
-            binary = [binary]
-        for bit in binary:  # type: ignore
-            yield bit
-
-    db_cursor.close()
-    db_connection.close()
-
-
 def get_bytes_from_spotify(
-    playlist_ids: list[str],
-    database: str = "13bit_ids.db",
-    is_print_progress: bool = True,
+        playlist_ids: list[str],
+        database: str = "13bit_ids.db",
+        is_print_progress: bool = True,
 ) -> list[int]:
     binary: list[int] = []
     with sqlite3.connect(database) as db_connection:
@@ -369,13 +339,12 @@ def get_bytes_from_spotify(
 
 
 def download_from_spotify(
-    header_playlist_id: str,
-    file_destination: str,
-    track_id_database: str = "13bit_ids.db",
-    is_confirm_read: bool = True,
-    is_print_progress: bool = True,
+        header_playlist_id: str,
+        file_destination: str,
+        track_id_database: str = "13bit_ids.db",
+        is_confirm_read: bool = True,
+        is_print_progress: bool = True,
 ) -> None:
-
     header_bytes = get_bytes_from_spotify(
         playlist_ids=[header_playlist_id],
         database=track_id_database,
@@ -397,72 +366,31 @@ def download_from_spotify(
     return None
 
 
-def read_from_playlist(
-    header_playlist: str,
-    destination: str,
-    lookup_db: str = "13bit_ids.db",
-    confirm_read: bool = False,
-    print_progress: bool = False,
-) -> str | None:
-    header_string: str = bytes(
-        binary_bytes_conversion(
-            read_binary_from_playlist(header_playlist, lookup_db), "binary_to_bytes"
+# -------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------------
+
+def remove_from_spotify(header_playlist_id: str) -> None:
+    header_bytes = get_bytes_from_spotify(playlist_ids=[header_playlist_id], is_print_progress=False)
+    header_string = bytes(header_bytes).decode('utf-8')
+    playlist_ids = header_string.split("*")
+    playlist_ids[0] = header_playlist_id
+
+    for playlist_id in playlist_ids:
+        api_request_manager.send_request(
+            request=api_request_manager.sp.current_user_unfollow_playlist,
+            playlist_id=playlist_id,
         )
-    ).decode("utf-8")
-
-    playlist_ids: list[str] = header_string.split("*")
-    filename = playlist_ids.pop(0)
-
-    if confirm_read:
-        total_tracks: int = 0
-        for playlist in playlist_ids:
-            total_tracks += api_request_manager.send_request(
-                request=api_request_manager.sp.playlist, playlist_id=playlist
-            )["tracks"]["total"]
-
-        print(f"Total tracks: {total_tracks}")
-        print(f"Time estimate: {ceil(total_tracks / 100)}s")
-        if not confirmation_prompt():
-            sys.exit()
-
-    file_binary: list[int] = []
-    for playlist in playlist_ids:
-        playlist_binary = read_binary_from_playlist(playlist, lookup_db)
-        file_binary.extend(playlist_binary)
-    file_bytes = binary_bytes_conversion(file_binary, "binary_to_bytes")
-
-    with open(f"{filename}.gz", "wb") as f:
-        f.write(bytes(file_bytes))
-
-    with open(f"{destination}\\{filename}", "wb") as uncompressed_file:
-        with gz.open(f"{filename}.gz", "rb") as compressed_file:
-            uncompressed_file.write(compressed_file.read())
-
-    os.remove(f"{filename}.gz")
-
-    return f"{destination}/{filename}"
-
-
-def confirmation_prompt() -> bool:
-    confirmation = input("Confirm? (Y/N)\n")
-    print("\n")
-    if confirmation.upper() == "Y":
-        return True
-    return False
-
-
-# -------------------------------------------------------------------------------------
-# -------------------------------------------------------------------------------------
-# -------------------------------------------------------------------------------------
-# -------------------------------------------------------------------------------------
-# -------------------------------------------------------------------------------------
 
 
 api_request_manager: APIRequests = APIRequests()
 
 if __name__ == "__main__":
     # upload_to_spotify()
-    download_from_spotify(
-        input("Header\n"), file_destination=open_file_dialog("directory")
-    )
+    # download_from_spotify(
+    #     input("Header\n"), file_destination=open_file_dialog("directory")
+    # )
+    remove_from_spotify("https://open.spotify.com/playlist/6LqIBIdcl3z2nI6rCO6Kcj?si=d781c50d694245ce")
     pass
