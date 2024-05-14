@@ -11,17 +11,17 @@ from sqlite3 import Connection, Cursor
 from tkinter import filedialog
 from typing import Generator, Iterable
 
-import pyperclip  # type: ignore
+import pyperclip
 import spotipy  # type: ignore
 from spotipy.oauth2 import SpotifyClientCredentials  # type: ignore
 from spotipy.oauth2 import SpotifyOAuth
 
 
-def print_progress_bar(iteration, total, prefix="", suffix="", length=50, fill="X"):
+def print_progress_bar(iteration: int, total: int):
     percent = "{0:.1f}".format(100 * ((iteration + 1) / float(total)))
-    filled_length = int(length * (iteration + 1) // total)
-    bar = fill * filled_length + "-" * (length - filled_length)
-    print(f"\r{prefix} |{bar}| {percent}% {suffix}", end="")
+    filled_length = int(50 * (iteration + 1) // total)
+    bar = "X" * filled_length + "-" * (50 - filled_length)
+    print(f"\r|{bar}| {percent}%", end="")
     if iteration + 1 == total:
         print()
 
@@ -221,9 +221,11 @@ def upload_to_spotify(
     playlist_count: int = ceil(track_count / max_playlist_size)
     if is_confirmation_prompt:
         print(
-            f"{file.path}\n{len(file_bytes)} bytes\n",
-            f"{track_count} tracks\n{playlist_count} playlists\n",
-            f"Time estimate: {ceil(track_count / 85)}s"
+            f"{file.path}\n",
+            f"{len(file_bytes)} bytes\n",
+            f"{track_count} tracks\n",
+            f"{playlist_count} playlists\n",
+            f"Time estimate: {ceil(track_count / 85)}s",
         )
         input("Press enter to continue. Press ctrl + c to quit.")
 
@@ -232,7 +234,7 @@ def upload_to_spotify(
         bits_per_track=bits_per_track,
         max_playlist_size=max_playlist_size,
         track_id_database=track_id_database,
-        print_progress=is_print_progress
+        print_progress=is_print_progress,
     )
 
     header_string = "*".join([file.name] + playlist_ids)
@@ -243,7 +245,7 @@ def upload_to_spotify(
         max_playlist_size=max_playlist_size,
         track_id_database=track_id_database,
         name=f"{file.path} Header",
-        print_progress=False
+        print_progress=False,
     )
 
     return header_playlist_id[0]
@@ -255,7 +257,7 @@ def add_bytes_to_spotify(
         max_playlist_size: int,
         track_id_database: str,
         name: str = time.time(),
-        print_progress: bool = True
+        print_progress: bool = True,
 ) -> list[str]:
     binary = binary_bytes_conversion(bytes_to_add, conversion_type="bytes_to_binary")
     track_ids: list[str] = []
@@ -294,7 +296,9 @@ def add_bytes_to_spotify(
                 name=sha256_encrypt(name),
             )["id"]
         )
-        api_request_manager.add_tracks_to_playlist(playlist_ids[-1], chunk, print_progress=print_progress)
+        api_request_manager.add_tracks_to_playlist(
+            playlist_ids[-1], chunk, print_progress=print_progress
+        )
 
     return playlist_ids
 
@@ -327,6 +331,39 @@ def read_binary_from_playlist(playlist: str, database: str) -> Generator:
 
     db_cursor.close()
     db_connection.close()
+
+
+def get_bytes_from_spotify(playlist_ids: list[str], database: str) -> list[int]:
+    binary: list[int] = []
+    with sqlite3.connect(database) as db_connection:
+        db_cursor: Cursor = db_connection.cursor()
+        for playlist_id in playlist_ids:
+            playlist_tracks = api_request_manager.get_playlist_tracks(playlist_id)
+            for track in playlist_tracks:
+                track_binary_str: str = db_query(
+                    output_column="binary",
+                    reference_column="track_identifier",
+                    query=f"{track['name']}{[artist['name'] for artist in track['artists']]}{track['album']['name']}",
+                    table="_13bit_ids",
+                    cursor=db_cursor,
+                )
+                track_binary: list[int] | int = eval(track_binary_str)
+                if type(track_binary) is list:
+                    binary.extend(track_binary)
+                else:
+                    binary.append(track_binary)
+
+    return binary
+
+
+def download_from_spotify(
+        header_playlist_id: str,
+        file_destination: str,
+        track_id_database: str = "13bit_ids.db",
+        is_confirm_read: bool = True,
+        is_print_progress: bool = True,
+) -> None:
+    raise NotImplemented
 
 
 def read_from_playlist(
