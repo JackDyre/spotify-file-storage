@@ -216,41 +216,11 @@ class File:
 # -------------------------------------------------------------------------------------
 
 
-# def split_binary_into_tracks(
-#     binary: list, bits_per_track: int, database: str
-# ) -> Generator:
-
-#     with sqlite3.connect(database) as db_connection:
-
-#         db_cursor: Cursor = db_connection.cursor()
-
-#         for track_data in batch(binary, bits_per_track):
-#             if len(track_data) == bits_per_track:
-#                 yield db_query(
-#                     output_column="track_id",
-#                     reference_column="binary",
-#                     query=str(track_data),
-#                     table="_13bit_ids",
-#                     cursor=db_cursor,
-#                 )
-#             else:
-#                 for byte in track_data:
-#                     yield db_query(
-#                         output_column="track_id",
-#                         reference_column="binary",
-#                         query=str(byte),
-#                         table="_13bit_ids",
-#                         cursor=db_cursor,
-#                     )
-
-#         db_cursor.close()
-
-
 def upload_to_spotify(
     file_path: str | None = None,
     is_compressed: bool = True,
     track_id_database: str = "13bit_ids.db",
-    max_playlist_size: int = 13,
+    max_playlist_size: int = 10_001 - 13,
     bits_per_track: int = 13,
     is_print_progress: bool = True,
     is_confirmation_prompt: bool = True,
@@ -284,7 +254,6 @@ def add_bytes_to_spotify(
     track_id_database: str,
 ) -> list[str]:
     binary = binary_bytes_conversion(bytes, conversion_type="bytes_to_binary")
-    print(binary)
     track_ids: list[str] = []
     with sqlite3.connect(track_id_database) as db_connection:
         db_cursor: Cursor = db_connection.cursor()
@@ -319,88 +288,11 @@ def add_bytes_to_spotify(
                 request=api_request_manager.sp.user_playlist_create,
                 user=api_request_manager.user_id,
                 name=sha256_encrypt(time.time()),
-            )
+            )["id"]
         )
         api_request_manager.add_tracks_to_playlist(playlist_ids[-1], chunk)
 
     return playlist_ids
-
-
-# def u(
-#     file_path: str | None = None,
-#     is_compressed: bool = True,
-#     lookup_db: str = "13bit_ids.db",
-#     max_tracks_per_playlist: int = 9_985,
-#     bits_per_track: int = 13,
-#     print_progress: bool = True,
-#     confirm_write: bool = True,
-# ) -> str | None:
-
-#     file = File(file_path or open_file_dialog(dialog_type="file"))
-
-#     if is_compressed:
-#         file_binary = file.get_binary(compressed=True)
-#     if not is_compressed:
-#         file_binary = file.get_binary(compressed=False)
-
-#     track_count = len(file_binary) // 13 + len(file_binary) % 13
-#     playlist_count = ceil(track_count / max_tracks_per_playlist)
-
-#     if confirm_write:
-#         print(f"\nTracks needed: {track_count}")
-#         print(f"Playlists needed: {playlist_count}")
-#         print(f"Time estimate: {ceil(track_count / 100)}s")
-#         if not confirmation_prompt():
-#             sys.exit()
-
-#     playlist_ids: list[str] = []
-#     for idx, playlist_batch in enumerate(
-#         batch(
-#             split_binary_into_tracks(file_binary, bits_per_track, lookup_db),
-#             max_tracks_per_playlist,
-#         ),
-#         start=1,
-#     ):
-
-#         playlist_id = api_request_manager.send_request(
-#             api_request_manager.sp.user_playlist_create,
-#             user=api_request_manager.user_id,
-#             name=f"{file.name}: Playlist {idx} of {playlist_count}",
-#         )["id"]
-#         playlist_ids.append(playlist_id)
-
-#         if print_progress:
-#             print(
-#                 f"Dumping {len(list(playlist_batch))} tracks into playlist {idx} of {playlist_count}"
-#             )
-#         api_request_manager.add_tracks_to_playlist(
-#             playlist=playlist_id,
-#             tracks=list(playlist_batch),
-#             print_progress=print_progress,
-#         )
-
-#     header_string = "*".join([file.name] + playlist_ids)
-#     header_tracks = split_binary_into_tracks(
-#         binary_bytes_conversion(list(header_string.encode("utf-8")), "bytes_to_binary"),
-#         bits_per_track,
-#         lookup_db,
-#     )
-
-#     header_id = api_request_manager.send_request(
-#         api_request_manager.sp.user_playlist_create,
-#         user=api_request_manager.user_id,
-#         name=f"{file.name}: Header Playlist",
-#     )["id"]
-
-#     api_request_manager.add_tracks_to_playlist(
-#         playlist=header_id, tracks=list(header_tracks)
-#     )
-
-#     pyperclip.copy(header_id)
-#     if print_progress:
-#         print("\nHeader playlist ID copied to clipboard")
-
-#     return header_id
 
 
 # -------------------------------------------------------------------------------------
