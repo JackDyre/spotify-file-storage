@@ -13,8 +13,7 @@ from typing import Generator, Iterable
 
 import pyperclip
 import spotipy
-from spotipy.oauth2 import SpotifyClientCredentials
-from spotipy.oauth2 import SpotifyOAuth
+from spotipy.oauth2 import SpotifyClientCredentials, SpotifyOAuth
 
 
 def print_progress_bar(iteration: int, total: int):
@@ -263,7 +262,7 @@ def add_bytes_to_spotify(
     bits_per_track: int,
     max_playlist_size: int,
     track_id_database: str,
-    name: str = time.time(),
+    name: str = str(time.time()),
     print_progress: bool = True,
 ) -> list[str]:
     binary = binary_bytes_conversion(bytes_to_add, conversion_type="bytes_to_binary")
@@ -392,7 +391,10 @@ def download_from_spotify(
         is_print_progress=is_print_progress,
     )
 
-    raise NotImplemented
+    with open(f"{file_destination}\\{filename}", "wb") as f:
+        f.write(gz.decompress(bytes(file_bytes)))
+
+    return None
 
 
 def read_from_playlist(
@@ -459,9 +461,8 @@ def confirmation_prompt() -> bool:
 api_request_manager: APIRequests = APIRequests()
 
 if __name__ == "__main__":
-    # read_from_playlist(
-    #     header_playlist=input("Paste header playlist URL/ID:\n\n"),
-    #     destination=open_file_dialog("directory"),
-    # )
-    upload_to_spotify()
+    # upload_to_spotify()
+    download_from_spotify(
+        input("Header\n"), file_destination=open_file_dialog("directory")
+    )
     pass
