@@ -71,14 +71,6 @@ def binary_bytes_conversion(
     )
 
 
-def confirmation_prompt() -> bool:
-    confirmation = input("Confirm? (Y/N)\n")
-    print("\n")
-    if confirmation.upper() == "Y":
-        return True
-    return False
-
-
 def db_query(
         output_column: str, reference_column: str, query: str, table: str, cursor: Cursor
 ) -> str:
@@ -220,14 +212,27 @@ def upload_to_spotify(
         is_print_progress: bool = True,
         is_confirmation_prompt: bool = True,
 ) -> str:
-    file = File(file_path or open_file_dialog(dialog_type="file"))
-    file_bytes = file.get_bytes(compressed=is_compressed)
+    file: File = File(file_path or open_file_dialog(dialog_type="file"))
+    file_bytes: list[int] = file.get_bytes(compressed=is_compressed)
+
+    track_count: int = (8 * len(file_bytes)) // bits_per_track + (
+            8 * len(file_bytes)
+    ) % bits_per_track
+    playlist_count: int = ceil(track_count / max_playlist_size)
+    if is_confirmation_prompt:
+        print(
+            f"{file.path}\n{len(file_bytes)} bytes\n",
+            f"{track_count} tracks\n{playlist_count} playlists\n",
+            f"Time estimate: {ceil(track_count / 85)}s"
+        )
+        input("Press enter to continue. Press ctrl + c to quit.")
 
     playlist_ids = add_bytes_to_spotify(
         bytes_to_add=file_bytes,
         bits_per_track=bits_per_track,
         max_playlist_size=max_playlist_size,
         track_id_database=track_id_database,
+        print_progress=is_print_progress
     )
 
     header_string = "*".join([file.name] + playlist_ids)
@@ -237,7 +242,8 @@ def upload_to_spotify(
         bits_per_track=bits_per_track,
         max_playlist_size=max_playlist_size,
         track_id_database=track_id_database,
-        name=f"{file.path} Header"
+        name=f"{file.path} Header",
+        print_progress=False
     )
 
     return header_playlist_id[0]
@@ -248,7 +254,8 @@ def add_bytes_to_spotify(
         bits_per_track: int,
         max_playlist_size: int,
         track_id_database: str,
-        name: str = time.time()
+        name: str = time.time(),
+        print_progress: bool = True
 ) -> list[str]:
     binary = binary_bytes_conversion(bytes_to_add, conversion_type="bytes_to_binary")
     track_ids: list[str] = []
@@ -287,7 +294,7 @@ def add_bytes_to_spotify(
                 name=sha256_encrypt(name),
             )["id"]
         )
-        api_request_manager.add_tracks_to_playlist(playlist_ids[-1], chunk)
+        api_request_manager.add_tracks_to_playlist(playlist_ids[-1], chunk, print_progress=print_progress)
 
     return playlist_ids
 
@@ -366,6 +373,14 @@ def read_from_playlist(
     os.remove(f"{filename}.gz")
 
     return f"{destination}/{filename}"
+
+
+def confirmation_prompt() -> bool:
+    confirmation = input("Confirm? (Y/N)\n")
+    print("\n")
+    if confirmation.upper() == "Y":
+        return True
+    return False
 
 
 # -------------------------------------------------------------------------------------

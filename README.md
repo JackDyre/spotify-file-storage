@@ -17,7 +17,7 @@ Unfortunately with they way Spotify's API works, you must create your own API ap
 python write.py
 ```
 
-Will open a file dialogue for you to select a file, then reads and converts the binary of the file to Spotify tracks. Will store the file metadata and the playlist IDs of all of the playlists that contain the contents of the file. As long as the content playlists exist, the header playlist is the only one that you need to keep track of.
+Will open a file dialog for you to select a file, then reads and converts the binary of the file to Spotify tracks. Will store the file metadata and the playlist IDs of all of the playlists that contain the contents of the file. As long as the content playlists exist, the header playlist is the only one that you need to keep track of.
 
 ### `read.py`
 
@@ -25,7 +25,7 @@ Will open a file dialogue for you to select a file, then reads and converts the 
 python read.py
 ```
 
-Will prompt you for a header playlist ID, then open a file dialogue for you to select a destination directory, then reads and converts the Spotify track IDs to binary. Will write the file to the selected directory.
+Will prompt you for a header playlist ID, then open a file dialog for you to select a destination directory, then reads and converts the Spotify track IDs to binary. Will write the file to the selected directory.
 
 ## Dependencies
 
