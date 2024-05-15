@@ -1,4 +1,4 @@
-import gzip as gz
+﻿import gzip as gz
 import hashlib
 import json
 import os
@@ -411,14 +411,30 @@ class CurrentEnvironmentDirectory:
         for folder in current_path:
             self.current_directory = self.current_directory[folder]
 
+    @property
+    def files(self) -> list[str]:
+        files: list[str] = []
+        for _, val in self.current_directory.items():
+            if type(val) is str:
+                files.append(val)
+        return files
 
-api_request_manager: APIRequests = APIRequests()
+    @property
+    def folders(self) -> list[dict]:
+        folders: list[dict] = []
+        for key, val in self.current_directory.items():
+            if type(val) is dict:
+                folders.append(key)
+        return folders
+
+
+# api_request_manager: APIRequests = APIRequests()
 
 if __name__ == "__main__":
     # upload_to_spotify()
     # download_from_spotify(
     #     input("Header\n"), file_destination=open_file_dialog("directory")
     # )
-    upload_to_spotify()
-    remove_from_spotify(input("H id?\n"))
+    # upload_to_spotify()
+    # remove_from_spotify(input("H id?\n"))
     pass
