@@ -12,7 +12,6 @@ from sqlite3 import Cursor
 from tkinter import filedialog
 from typing import Iterable
 
-import pyperclip
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials, SpotifyOAuth
 
@@ -388,6 +387,7 @@ def remove_from_spotify(header_playlist_id: str) -> None:
 
 class FileEnvironment:
     def __init__(self, environment_playlist_id: str) -> None:
+        self.id = environment_playlist_id
         environment_bytes: list[int] = get_bytes_from_spotify(
             [environment_playlist_id], is_print_progress=False
         )
@@ -403,6 +403,7 @@ class FileEnvironment:
 
 class CurrentEnvironmentDirectory:
     def __init__(self, file_system: dict, current_path: list[str]):
+        self.file_system = file_system
         self.parent_directory: list = current_path[:-1]
         self.current_directory: dict = file_system
 
