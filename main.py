@@ -55,7 +55,7 @@ def open_file_dialog(dialog_type: str) -> str:
 
 
 def binary_bytes_conversion(
-    binary: Iterable | list[int], conversion_type: str
+        binary: Iterable | list[int], conversion_type: str
 ) -> list[int]:
     if conversion_type == "binary_to_bytes":
         return list(
@@ -71,7 +71,7 @@ def binary_bytes_conversion(
 
 
 def db_query(
-    output_column: str, reference_column: str, query: str, table: str, cursor: Cursor
+        output_column: str, reference_column: str, query: str, table: str, cursor: Cursor
 ) -> str:
     cursor.execute(
         f"SELECT {output_column} FROM {table} WHERE {reference_column} = ?", (query,)
@@ -124,7 +124,7 @@ class APIRequests:
         return sp
 
     def get_playlist_tracks(
-        self, playlist: str, print_progress: bool = True
+            self, playlist: str, print_progress: bool = True
     ) -> list[dict]:
         offset: int = 0
         tracks: list[dict] = []
@@ -148,7 +148,7 @@ class APIRequests:
         return tracks
 
     def add_tracks_to_playlist(
-        self, playlist: str, tracks: list[str], print_progress: bool = False
+            self, playlist: str, tracks: list[str], print_progress: bool = False
     ) -> None:
         for idx, track_batch in enumerate(batch(tracks, 100)):
             if print_progress:
@@ -210,19 +210,19 @@ def sha256_encrypt(data):
 
 
 def upload_to_spotify(
-    file_path: str | None = None,
-    is_compressed: bool = True,
-    track_id_database: str = "13bit_ids.db",
-    max_playlist_size: int = 10_001 - 13,
-    bits_per_track: int = 13,
-    is_print_progress: bool = True,
-    is_confirmation_prompt: bool = True,
+        file_path: str | None = None,
+        is_compressed: bool = True,
+        track_id_database: str = "13bit_ids.db",
+        max_playlist_size: int = 10_001 - 13,
+        bits_per_track: int = 13,
+        is_print_progress: bool = True,
+        is_confirmation_prompt: bool = True,
 ) -> str:
     file: File = File(file_path or open_file_dialog(dialog_type="file"))
     file_bytes: list[int] = file.get_bytes(compressed=is_compressed)
 
     track_count: int = (8 * len(file_bytes)) // bits_per_track + (
-        8 * len(file_bytes)
+            8 * len(file_bytes)
     ) % bits_per_track
     playlist_count: int = ceil(track_count / max_playlist_size)
     if is_confirmation_prompt:
@@ -258,12 +258,12 @@ def upload_to_spotify(
 
 
 def add_bytes_to_spotify(
-    bytes_to_add: list[int],
-    bits_per_track: int = 13,
-    max_playlist_size: int = 9988,
-    track_id_database: str = "13bit_ids.db",
-    name: str = str(time.time()),
-    print_progress: bool = True,
+        bytes_to_add: list[int],
+        bits_per_track: int = 13,
+        max_playlist_size: int = 9988,
+        track_id_database: str = "13bit_ids.db",
+        name: str = str(time.time()),
+        print_progress: bool = True,
 ) -> list[str]:
     binary = binary_bytes_conversion(bytes_to_add, conversion_type="bytes_to_binary")
     track_ids: list[str] = []
@@ -310,9 +310,9 @@ def add_bytes_to_spotify(
 
 
 def get_bytes_from_spotify(
-    playlist_ids: list[str],
-    database: str = "13bit_ids.db",
-    is_print_progress: bool = True,
+        playlist_ids: list[str],
+        database: str = "13bit_ids.db",
+        is_print_progress: bool = True,
 ) -> list[int]:
     binary: list[int] = []
     with sqlite3.connect(database) as db_connection:
@@ -339,11 +339,10 @@ def get_bytes_from_spotify(
 
 
 def download_from_spotify(
-    header_playlist_id: str,
-    file_destination: str,
-    track_id_database: str = "13bit_ids.db",
-    is_confirm_read: bool = True,
-    is_print_progress: bool = True,
+        header_playlist_id: str,
+        file_destination: str,
+        track_id_database: str = "13bit_ids.db",
+        is_print_progress: bool = True,
 ) -> None:
     header_bytes = get_bytes_from_spotify(
         playlist_ids=[header_playlist_id],
@@ -411,13 +410,18 @@ class FileEnvironment:
             self.current_path = self.current_directory.parent_path
         else:
             self.current_path.append(folder)
-        self.current_directory = CurrentEnvironmentDirectory(self.file_system, self.current_path)
+        self.current_directory = CurrentEnvironmentDirectory(
+            self.file_system, self.current_path
+        )
 
     def add_folder(self, name: str) -> None:
-        def sub_func():
-            pass
+        current = self.file_system
+        for folder in self.current_path:
+            current = current.setdefault(folder, {})
 
+        current[name] = {}
 
+        self.current_directory = CurrentEnvironmentDirectory(self.file_system, self.current_path)
 
 
 class CurrentEnvironmentDirectory:
@@ -453,13 +457,35 @@ class CurrentEnvironmentDirectory:
         return "\n".join(folders_list + files_list)
 
 
+def open_file_environment_by_password(password: str | None = None) -> FileEnvironment:
+    ...
+    user_playlists: list = []
+    while True:
+        api_request_manager.sp.user_playlists(user=api_request_manager.user_id)
+
+
 api_request_manager: APIRequests = APIRequests()
 
+fs = {
+    "main": {
+        "home": {
+            "user": {
+                "documents": {},
+                "pictures": {}
+            },
+            "admin": {
+                "logs": {},
+                "configs": {}
+            }
+        },
+        "var": {
+            "log": {},
+            "tmp": {}
+        }
+    }
+}
+
+fe = FileEnvironment(add_bytes_to_spotify(list(pickle.dumps(fs)))[0])
+
 if __name__ == "__main__":
-    # upload_to_spotify()
-    # download_from_spotify(
-    #     input("Header\n"), file_destination=open_file_dialog("directory")
-    # )
-    # upload_to_spotify()
-    # remove_from_spotify(input("H id?\n"))
     pass
