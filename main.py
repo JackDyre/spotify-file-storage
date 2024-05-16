@@ -413,6 +413,12 @@ class FileEnvironment:
             self.current_path.append(folder)
         self.current_directory = CurrentEnvironmentDirectory(self.file_system, self.current_path)
 
+    def add_folder(self, name: str) -> None:
+        def sub_func():
+            pass
+
+
+
 
 class CurrentEnvironmentDirectory:
     def __init__(self, file_system: dict, current_path: list[str]):
@@ -428,9 +434,9 @@ class CurrentEnvironmentDirectory:
     @property
     def files(self) -> list[str]:
         files: list[str] = []
-        for _, val in self.current_directory.items():
+        for key, val in self.current_directory.items():
             if type(val) is str:
-                files.append(val)
+                files.append(key)
         return files
 
     @property
