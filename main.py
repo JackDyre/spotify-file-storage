@@ -423,6 +423,9 @@ class FileEnvironment:
 
         self.current_directory = CurrentEnvironmentDirectory(self.file_system, self.current_path)
 
+    def __str__(self) -> str:
+        return json.dumps(self.file_system, indent=4)
+
 
 class CurrentEnvironmentDirectory:
     def __init__(self, file_system: dict, current_path: list[str]):
@@ -458,10 +461,28 @@ class CurrentEnvironmentDirectory:
 
 
 def open_file_environment_by_password(password: str | None = None) -> FileEnvironment:
-    ...
-    user_playlists: list = []
+    followed_playlists: list[dict] = []
+    offset: int = 0
     while True:
-        api_request_manager.sp.user_playlists(user=api_request_manager.user_id)
+        playlist_batch: dict = api_request_manager.send_request(
+            api_request_manager.sp.current_user_playlists,
+            offset=offset
+        )
+        offset += 50
+
+        followed_playlists.extend(playlist_batch['items'])
+
+        if not playlist_batch['next']:
+            break
+
+    user_playlists = []
+    for playlist in followed_playlists:
+        if playlist['owner']['id'] == api_request_manager.user_id:
+            user_playlists.append(playlist)
+
+    for playlist in user_playlists:
+        if playlist['name'] == sha256_encrypt(password):
+            return FileEnvironment(playlist['id'])
 
 
 api_request_manager: APIRequests = APIRequests()
@@ -469,18 +490,18 @@ api_request_manager: APIRequests = APIRequests()
 fs = {
     "main": {
         "home": {
-            "user": {
-                "documents": {},
-                "pictures": {}
+            "guest": {
+                "docs": {},
+                "media": {}
             },
-            "admin": {
-                "logs": {},
-                "configs": {}
+            "test": {
+                "bin": {},
+                "conf": {}
             }
         },
         "var": {
-            "log": {},
-            "tmp": {}
+            "www": {},
+            "mail": {}
         }
     }
 }
@@ -488,4 +509,4 @@ fs = {
 fe = FileEnvironment(add_bytes_to_spotify(list(pickle.dumps(fs)))[0])
 
 if __name__ == "__main__":
-    pass
+    open_file_environment_by_password('')
