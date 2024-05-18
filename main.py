@@ -505,7 +505,7 @@ class CurrentEnvironmentDirectory:
         return json.dumps(cd_dict, indent=4)
 
 
-def open_file_environment_by_password(password: str | None = None) -> FileEnvironment:
+def open_file_environment_by_password(password: str) -> FileEnvironment:
     followed_playlists: list[dict] = []
     offset: int = 0
     while True:
