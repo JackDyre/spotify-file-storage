@@ -75,7 +75,8 @@ def db_query(
 ) -> str:
     try:
         cursor.execute(
-            f"SELECT {output_column} FROM {table} WHERE {reference_column} = ?", (query,)
+            f"SELECT {output_column} FROM {table} WHERE {reference_column} = ?",
+            (query,),
         )
         return cursor.fetchone()[0]
     except TypeError as e:
@@ -469,6 +470,12 @@ class FileEnvironment:
 
         remove_from_spotify(file_id)
 
+    def download_file(self, file):
+        download_from_spotify(
+            self.current_directory.current_directory[file],
+            open_file_dialog("directory"),
+        )
+
     def __str__(self) -> str:
         return json.dumps(self.file_system, indent=4)
 
@@ -541,12 +548,12 @@ def create_file_environment() -> FileEnvironment:
 
 def file_env_mainloop(fe: FileEnvironment):
     while True:
-        print('\n')
+        print("\n")
         print(fe.current_path)
 
         command = input("|> ").strip()
 
-        if command.startswith('exit'):
+        if command.startswith("exit"):
             print("Syncing with Spotify...")
             fe.update_playlist()
             break
@@ -561,7 +568,7 @@ def file_env_mainloop(fe: FileEnvironment):
             folder = command[6:].strip()
             fe.remove_folder(folder)
         elif command.startswith("touch"):
-            if command == 'touch':
+            if command == "touch":
                 fe.add_file()
             else:
                 file = command[6:].strip()
@@ -569,6 +576,9 @@ def file_env_mainloop(fe: FileEnvironment):
         elif command.startswith("mkdir "):
             folder = command[6:].strip()
             fe.add_folder(folder)
+        elif command.startswith("fetch"):
+            file = command[6:].strip()
+            fe.download_file(file)
         elif command == "ls":
             print(fe.current_directory)
             continue
@@ -576,7 +586,8 @@ def file_env_mainloop(fe: FileEnvironment):
             print(fe)
             continue
         else:
-            print("""Help Menu:
+            print(
+                """Help Menu:
             
             cd [folder_name] : moves the current working directory to the specified folder
             cd .. : moves the current working directory to the parent folder
@@ -584,11 +595,13 @@ def file_env_mainloop(fe: FileEnvironment):
             tv : shows a tree view the entire file system
             touch : opens a file dialog to select a file to upload
             touch [file_path] : uploads the specified local file path to the current directory
+            fetch [file_name] : Downloads the specified file and writes it to the directory selected in the dialog
             mkdir [folder_name] : creates a folder in the current directory moves the current directory to it
             rm [file_name] : removes the specified file
             rmdir [folder_name] : removes the specified folder (DO NOT USE ON NON-EMPTY DIRECTORIES)
             exit : syncs with spotify and exits the program
-            """)
+            """
+            )
             continue
 
         print("\nSyncing with Spotify...")
@@ -598,6 +611,7 @@ def file_env_mainloop(fe: FileEnvironment):
 api_request_manager: APIRequests = APIRequests()
 
 if __name__ == "__main__":
-    file_env: FileEnvironment = open_file_environment_by_password(input("Input Password:\n"))
+    file_env: FileEnvironment = open_file_environment_by_password(
+        input("Input Password:\n")
+    )
     file_env_mainloop(file_env)
-
