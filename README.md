@@ -3,38 +3,28 @@
 
 ## Introduction
 
-Experimental project that stores files as Spotify playlists.
+A python project that *~~steals~~* borrows file storage from Spotify for free and create virtual file systems in the form of Spotify playlists.
 
 ## Usage
 
 ### Spotify API Credentials
 
-Unfortunately with they way Spotify's API works, you must create your own API app to get your own credentials. Visit [Spotify's developer page](https://developer.spotify.com) to create your app and follow [this](https://developer.spotify.com/documentation/web-api/concepts/apps) article to get your `client_id` and `client_secret`. The program will ask you to input your API credentials once and will store them locally for future use. If at any point authentication using your API credentials fails, the `api-credentials.json` file will be removed automatically and you will recieve the API credentials prompt the next run.
+To use this project you must provide your own API keys that are associated with your Spotify account. Read [this](https://developer.spotify.com/documentation/web-api/concepts/apps) to learn about setting up your Spotify Web API app and you will be able to find the `client_id` and `client_secret` in your Spotify developer dashboard. You will be prompted to input your credentials the first time you run this project.
 
-### `write.py`
+### File Environments
 
-```
-python write.py
-```
+This project stores your files in a password protected 'file environment'. When you run `main.py` you will be prompted to input a file environment password. It will search your library for a match and will load the matching file environment if found. If no match is found in your library, you will be prompted again to input the password of the file environment to be created.
 
-Will open a file dialogue for you to select a file, then reads and converts the binary of the file to Spotify tracks. Will store the file metadata and the playlist IDs of all of the playlists that contain the contents of the file. As long as the content playlists exist, the header playlist is the only one that you need to keep track of.
+**Warning:** There is no recovery process for file environment passwords. You are responsible for keeping track of them. If you lose the environment password, you will no longer be able to remove any playlists from that file environment since all playlists are meant to appear the same.
 
-### `read.py`
+### File Privacy
 
-```
-python read.py
-```
-
-Will prompt you for a header playlist ID, then open a file dialogue for you to select a destination directory, then reads and converts the Spotify track IDs to binary. Will write the file to the selected directory.
+Your files stored on spotify are fairly secure, especially if you fetch your own set of track IDs to be referenced rather than the defaults that I fetched. Instructions on configuring your own set of IDs will be written shortly.
 
 ## Dependencies
 
-Requires [spotipy](https://pypi.org/project/spotipy/) and [pyperclip](https://pypi.org/project/pyperclip/).
+Requires [spotipy](https://pypi.org/project/spotipy/)
 
 ```
 pip install spotipy
 ```
-```
-pip install pyperclip
-```
-
