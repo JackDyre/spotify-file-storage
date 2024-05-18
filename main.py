@@ -73,10 +73,14 @@ def binary_bytes_conversion(
 def db_query(
     output_column: str, reference_column: str, query: str, table: str, cursor: Cursor
 ) -> str:
-    cursor.execute(
-        f"SELECT {output_column} FROM {table} WHERE {reference_column} = ?", (query,)
-    )
-    return cursor.fetchone()[0]
+    try:
+        cursor.execute(
+            f"SELECT {output_column} FROM {table} WHERE {reference_column} = ?", (query,)
+        )
+        return cursor.fetchone()[0]
+    except TypeError as e:
+        print(query)
+        raise e
 
 
 class APIRequests:
@@ -385,7 +389,7 @@ def remove_from_spotify(header_playlist_id: str) -> None:
 
 
 class FileEnvironment:
-    def __init__(self, environment_playlist_id: str) -> None:
+    def __init__(self, environment_playlist_id: str, password: str) -> None:
         self.id = environment_playlist_id
         environment_bytes: list[int] = get_bytes_from_spotify(
             [environment_playlist_id], is_print_progress=False
@@ -396,6 +400,8 @@ class FileEnvironment:
             self.file_system, self.current_path
         )
 
+        self.password = password
+
     def update_playlist(self) -> None:
         api_request_manager.send_request(
             request=api_request_manager.sp.current_user_unfollow_playlist,
@@ -403,9 +409,9 @@ class FileEnvironment:
         )
 
         new_environment_bytes = list(pickle.dumps(self.file_system))
-        self.id = add_bytes_to_spotify(new_environment_bytes)[0]
+        self.id = add_bytes_to_spotify(new_environment_bytes, name=self.password)[0]
 
-    def cd(self, folder: str) -> None:
+    def change_directory(self, folder: str) -> None:
         if folder == "..":
             self.current_path = self.current_directory.parent_path
         else:
@@ -425,6 +431,8 @@ class FileEnvironment:
             self.file_system, self.current_path
         )
 
+        self.change_directory(name)
+
     def add_file(self, file_path: str | None = None):
         file = File(file_path or open_file_dialog("file"))
         header_id: str = upload_to_spotify(file.path)
@@ -439,7 +447,17 @@ class FileEnvironment:
             self.file_system, self.current_path
         )
 
-    def rm(self, file):
+    def remove_folder(self, folder):
+        file_system = self.file_system
+
+        file_path = self.current_path + [folder]
+
+        for key in file_path[:-1]:
+            file_system = file_system.get(key, None)
+
+        file_system.pop(folder)
+
+    def remove_file(self, file):
         file_system = self.file_system
 
         file_path = self.current_path + [file]
@@ -483,9 +501,8 @@ class CurrentEnvironmentDirectory:
         return folders
 
     def __str__(self) -> str:
-        folders_list: list = ["Folders:"] + self.folders
-        files_list: list = ["Files:"] + self.files
-        return "\n".join(folders_list + files_list)
+        cd_dict = {"Folders": self.folders, "Files": self.files}
+        return json.dumps(cd_dict, indent=4)
 
 
 def open_file_environment_by_password(password: str | None = None) -> FileEnvironment:
@@ -509,11 +526,78 @@ def open_file_environment_by_password(password: str | None = None) -> FileEnviro
 
     for playlist in user_playlists:
         if playlist["name"] == sha256_encrypt(password):
-            return FileEnvironment(playlist["id"])
+            return FileEnvironment(playlist["id"], password)
+
+    return create_file_environment()
+
+
+def create_file_environment() -> FileEnvironment:
+    password = input("Create a password: \n")
+    environment_playlist_id = add_bytes_to_spotify(
+        list(pickle.dumps({"main": {}})), name=password
+    )[0]
+    return FileEnvironment(environment_playlist_id, password)
+
+
+def file_env_mainloop(fe: FileEnvironment):
+    while True:
+        print('\n')
+        print(fe.current_path)
+
+        command = input("|> ").strip()
+
+        if command.startswith('exit'):
+            print("Syncing with Spotify...")
+            fe.update_playlist()
+            break
+        elif command.startswith("cd "):
+            folder = command[3:].strip()
+            fe.change_directory(folder)
+            continue
+        elif command.startswith("rm "):
+            file = command[3:].strip()
+            fe.remove_file(file)
+        elif command.startswith("rmdir "):
+            folder = command[6:].strip()
+            fe.remove_folder(folder)
+        elif command.startswith("touch"):
+            if command == 'touch':
+                fe.add_file()
+            else:
+                file = command[6:].strip()
+                fe.add_file(file)
+        elif command.startswith("mkdir "):
+            folder = command[6:].strip()
+            fe.add_folder(folder)
+        elif command == "ls":
+            print(fe.current_directory)
+            continue
+        elif command == "tv":
+            print(fe)
+            continue
+        else:
+            print("""Help Menu:
+            
+            cd [folder_name] : moves the current working directory to the specified folder
+            cd .. : moves the current working directory to the parent folder
+            ls : lists all files and folders in the current directory
+            tv : shows a tree view the entire file system
+            touch : opens a file dialog to select a file to upload
+            touch [file_path] : uploads the specified local file path to the current directory
+            mkdir [folder_name] : creates a folder in the current directory moves the current directory to it
+            rm [file_name] : removes the specified file
+            rmdir [folder_name] : removes the specified folder (DO NOT USE ON NON-EMPTY DIRECTORIES)
+            exit : syncs with spotify and exits the program
+            """)
+            continue
+
+        print("\nSyncing with Spotify...")
+        fe.update_playlist()
 
 
 api_request_manager: APIRequests = APIRequests()
 
-
 if __name__ == "__main__":
-    pass
+    file_env: FileEnvironment = open_file_environment_by_password(input("Input Password:\n"))
+    file_env_mainloop(file_env)
+
