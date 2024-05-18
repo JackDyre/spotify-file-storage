@@ -1,4 +1,4 @@
-from main import *
+from main import api_request_manager, print_progress_bar
 
 
 with open('new-id-list.txt', 'r') as f:
