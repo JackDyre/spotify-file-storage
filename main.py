@@ -281,7 +281,7 @@ def add_bytes_to_spotify(
                         output_column="track_id",
                         reference_column="binary",
                         query=str(chunk),
-                        table="_13bit_ids",
+                        table="binary_to_id",
                         cursor=db_cursor,
                     )
                 )
@@ -292,7 +292,7 @@ def add_bytes_to_spotify(
                             output_column="track_id",
                             reference_column="binary",
                             query=str(byte),
-                            table="_13bit_ids",
+                            table="binary_to_id",
                             cursor=db_cursor,
                         )
                     )
@@ -330,8 +330,8 @@ def get_bytes_from_spotify(
                 track_binary_str: str = db_query(
                     output_column="binary",
                     reference_column="track_identifier",
-                    query=f"{track['name']}{[artist['name'] for artist in track['artists']]}{track['album']['name']}",
-                    table="_13bit_ids",
+                    query=f"{track['name']}{track['album']['name']}{track['external_ids']['isrc']}",
+                    table="identifier_to_binary",
                     cursor=db_cursor,
                 )
                 track_binary: list[int] | int = eval(track_binary_str)
