@@ -1,8 +1,7 @@
 # Directories
 __pycache__/
 .mypy_cache/
-cpy_venv/
-pypy_venv/
+*venv*/
 .idea/
 
 # Files
