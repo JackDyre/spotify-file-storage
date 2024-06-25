@@ -9,7 +9,7 @@ A python project that *~~steals~~* borrows file storage from Spotify for free an
 
 ### Spotify API Credentials
 
-To use this project you must provide your own API keys that are associated with your Spotify account. Read [this](https://developer.spotify.com/documentation/web-api/concepts/apps) to learn about setting up your Spotify Web API app and you will be able to find the `client_id` and `client_secret` in your Spotify developer dashboard. You will be prompted to input your credentials the first time you run this project.
+To use this project you must provide your own API keys that are associated with your Spotify account. Read [this](https://developer.spotify.com/documentation/web-api/concepts/apps) to learn about setting up your Spotify Web API app, and you will be able to find the `client_id` and `client_secret` in your Spotify developer dashboard. You will be prompted to input your credentials the first time you run this project.
 
 ### File Environments
 
@@ -26,5 +26,5 @@ Your files stored on spotify are fairly secure, especially if you fetch your own
 Requires [spotipy](https://pypi.org/project/spotipy/)
 
 ```
-pip install spotipy
+pip install -r requirements.txt
 ```
