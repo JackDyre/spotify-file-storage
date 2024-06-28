@@ -46,11 +46,3 @@ def get_playlist_tracks(playlist_id: str) -> list[dict]:
 
     return play_list_tracks
 
-
-def add_playlist_tracks(tracks: list[str], playlist_id: str) -> dict:
-    pass
-
-
-get_playlist_tracks(
-    "https://open.spotify.com/playlist/4uz1h3jAKkoH3nZKUnrehK?si=675120a52b8c46cd"
-)
