@@ -1,10 +1,8 @@
 # Directories
 __pycache__/
-.mypy_cache/
 *venv*/
 .idea/
 
 # Files
-api-credentials.txt
 api-credentials.json
 .cache
