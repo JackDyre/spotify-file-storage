@@ -45,4 +45,3 @@ def get_playlist_tracks(playlist_id: str) -> list[dict]:
         play_list_tracks.extend(playlist["items"])
 
     return play_list_tracks
-
