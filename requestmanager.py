@@ -1,19 +1,27 @@
+import os
 from collections.abc import Callable
 from typing import Any
-import json
 
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
 
-def create_client(api_credentials: dict) -> spotipy.Spotify:
-    assert "client_id" in api_credentials.keys()
-    assert "client_secret" in api_credentials.keys()
+def create_client() -> spotipy.Spotify:
+    """
+    Create a Spotify client session using API credentials from environment variables.
 
-    client_id = api_credentials["client_id"]
-    client_secret = api_credentials["client_secret"]
+    Run `source ./apikeys.sh` to set API credentials in the environment variables.
 
-    sp = spotipy.Spotify(
+    :return: A Spotify client session
+    """
+    assert (
+        "CLIENT_ID" in os.environ and "CLIENT_SECRET" in os.environ
+    ), "You must set API credentials environment variables before running this.\n\n`source ./apikeys.sh`"
+
+    client_id = os.getenv("CLIENT_ID")
+    client_secret = os.getenv("CLIENT_SECRET")
+
+    return spotipy.Spotify(
         auth_manager=SpotifyOAuth(
             client_id=client_id,
             client_secret=client_secret,
@@ -22,20 +30,17 @@ def create_client(api_credentials: dict) -> spotipy.Spotify:
         )
     )
 
-    return sp
+
+sp = create_client()
 
 
-with open("api-credentials.json", "r") as f:
-    sp = create_client(json.load(f))
-
-
-def send_request(endpoint: Callable, **kwargs) -> Any:
-    response = endpoint(**kwargs)
-    return response
+def send_request(endpoint: Callable, **kwargs: Any) -> Any:
+    # TODO(Jack Dyre): Request rate limiting
+    return endpoint(**kwargs)
 
 
 def get_playlist_tracks(playlist_id: str) -> list[dict]:
-    play_list_tracks = list()
+    play_list_tracks = []
 
     playlist: dict = sp.playlist_items(playlist_id)
     play_list_tracks.extend(playlist["items"])
