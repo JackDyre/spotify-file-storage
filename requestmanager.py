@@ -3,6 +3,7 @@
 import os
 import time
 from collections.abc import Callable
+from typing import TypeVar
 
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
@@ -15,9 +16,6 @@ SCOPES = [
 
 
 REQUEST_RATE_LIMIT = os.getenv("REQUEST_RATE_LIMIT") or 0
-
-
-_recent_request_time = time.time()
 
 
 class APICredentialsNotFoundError(Exception):
@@ -33,51 +31,58 @@ class APICredentialsNotFoundError(Exception):
         """)
 
 
-def create_client() -> spotipy.Spotify:
-    """
-    Create a Spotify client session using API credentials from environment variables.
+class SpotifyClient:
+    """A wrapper for spotipy.Spotify that handles rate limiting client-side."""
 
-    Run `source ./apikeys.sh` to set API credentials in the environment variables.
+    T = TypeVar("T")
 
-    :return: A Spotify client session
-    """
-    if not ("CLIENT_ID" in os.environ and "CLIENT_SECRET" in os.environ):
-        raise APICredentialsNotFoundError
+    def __init__(self) -> None:
+        """Initialize instance with spotify.Spotify instance."""
+        if not ("CLIENT_ID" in os.environ and "CLIENT_SECRET" in os.environ):
+            raise APICredentialsNotFoundError
 
-    client_id = os.getenv("CLIENT_ID")
-    client_secret = os.getenv("CLIENT_SECRET")
+        self._client_id = os.getenv("CLIENT_ID")
+        self._client_secret = os.getenv("CLIENT_SECRET")
 
-    return spotipy.Spotify(
-        auth_manager=SpotifyOAuth(
-            client_id=client_id,
-            client_secret=client_secret,
-            scope=" ".join(SCOPES),
-            redirect_uri="http://localhost:8888/callback",
+        self.sp = spotipy.Spotify(
+            auth_manager=SpotifyOAuth(
+                client_id=self._client_id,
+                client_secret=self._client_secret,
+                scope=" ".join(SCOPES),
+                redirect_uri="http://localhost:8888/callback",
+            )
         )
-    )
+
+        self._recent_request_time = time.time()
+
+    def __getattr__(self, attr: str) -> T:
+        """Pass attr queries through to self.sp to make use easier."""
+        if hasattr(self.sp, attr):
+            return getattr(self.sp, attr)
+
+        raise AttributeError
+
+    def send_request(
+        self, endpoint: Callable, *args: str | list, **kwargs: str | list
+    ) -> dict:
+        """
+        Handle rate-limiting logic regarding sending a request to Spotify's Web API.
+
+        :param endpoint: An endpoint method from spotipy.Spotify
+        :param args: Args to be passed into the endpoint.
+        :param kwargs: Kwargs to be passed into the enpoint.
+        :return: The response from Spotify's Web API.
+        """
+        current_time = time.time()
+        if current_time - self._recent_request_time < REQUEST_RATE_LIMIT:
+            time.sleep(REQUEST_RATE_LIMIT + self._recent_request_time - current_time)
+
+        self._recent_request_time = current_time
+
+        return endpoint(*args, **kwargs)
 
 
-sp = create_client()
-
-
-def send_request(endpoint: Callable, *args: str | list, **kwargs: str | list) -> dict:
-    """
-    Handle rate-limiting logic regarding sending a request to Spotify's Web API.
-
-    :param endpoint: An endpoint method from spotipy.Spotify
-    :param args: Args to be passed into the endpoint.
-    :param kwargs: Kwargs to be passed into the enpoint.
-    :return: The response from Spotify's Web API.
-    """
-    global _recent_request_time
-
-    current_time = time.time()
-    if current_time - _recent_request_time < REQUEST_RATE_LIMIT:
-        time.sleep(REQUEST_RATE_LIMIT + _recent_request_time - current_time)
-
-    _recent_request_time = current_time
-
-    return endpoint(*args, **kwargs)
+sp = SpotifyClient()
 
 
 def get_playlist_tracks(playlist_id: str) -> list[dict]:
@@ -101,11 +106,6 @@ def get_playlist_tracks(playlist_id: str) -> list[dict]:
 
 def main() -> None:
     """Run the main logic for the program."""
-    _ = send_request(
-        sp.playlist,
-        "4",
-        playlist_id="https://open.spotify.com/playlist/5xNvpxP9MuBWshF8QdbrmF?si=f5a63f5c8c5c4ffc",
-    )
 
 
 if __name__ == "__main__":
