@@ -55,10 +55,10 @@ class SpotifyClient:
 
         self._recent_request_time = time.time()
 
-    def __getattr__(self, attr: str) -> T:
+    def __getattr__(self, name: str) -> object:
         """Pass attr queries through to self.sp to make use easier."""
-        if hasattr(self.sp, attr):
-            return getattr(self.sp, attr)
+        if hasattr(self.sp, name):
+            return getattr(self.sp, name)
 
         raise AttributeError
 
