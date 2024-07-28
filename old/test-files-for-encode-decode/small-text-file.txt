@@ -1,0 +1,1 @@
+This is a small text file that should be able to encode and decode to and from Spotify playlists really quickly!
