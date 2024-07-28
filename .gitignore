@@ -1,6 +1,6 @@
 # Directories
 __pycache__/
-*venv*/
+.venv/
 .idea/
 
 # Files
