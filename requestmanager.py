@@ -15,7 +15,7 @@ SCOPES = [
 ]
 
 
-REQUEST_RATE_LIMIT = float(os.getenv("REQUEST_RATE_LIMIT")) or 0
+REQUEST_RATE_LIMIT = float(os.getenv("REQUEST_RATE_LIMIT") or 0)
 
 
 class APICredentialsNotFoundError(Exception):
