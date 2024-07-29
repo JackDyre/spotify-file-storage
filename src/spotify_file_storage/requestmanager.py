@@ -3,7 +3,6 @@
 import os
 import time
 from collections.abc import Callable
-from typing import TypeVar
 
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
@@ -33,8 +32,6 @@ class APICredentialsNotFoundError(Exception):
 
 class SpotifyClient:
     """A wrapper for spotipy.Spotify that handles rate limiting client-side."""
-
-    T = TypeVar("T")
 
     def __init__(self) -> None:
         """Initialize instance with spotify.Spotify instance."""

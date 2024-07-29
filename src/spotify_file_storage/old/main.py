@@ -1,4 +1,4 @@
-﻿import gzip as gz
+import gzip as gz
 import hashlib
 import json
 import os
