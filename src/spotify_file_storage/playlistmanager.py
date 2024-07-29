@@ -14,26 +14,32 @@ identifier_to_binary = pl.read_json(
 MAX_PLAYLIST_SIZE = 10_000
 
 
-def upload_bytes(data: bytes, playlist_id: str) -> str:
-    """Upload a bytes object to Spotify and return the ID of the first playlist."""
-    #TODO: Write better docstring
+def upload_bytes(data: bytes, playlist_id: str) -> None:
+    """
+    Upload a bytes object to a Spotify playlist.
+
+    :param data: A bytes object to be written.
+    :param playlist_id: A string of the playlist ID to write the bytes to.
+    """
     batched_data = batched(data, 2)
 
     track_ids = []
 
     for batch in batched_data:
-        if len(batch) == 2:
-            two_byte_val = 256 * batch[0] + batch[1]
-            track_ids.append(binary_to_id[bin(two_byte_val)[2:].zfill(16)].to_list()[0])
-        elif len(batch) == 1:
+        if len(batch) == 1:
             one_byte_string = bin(batch[0])[2:].zfill(8)
             track_ids.extend(
                 binary_to_id[byte].to_list()[0] for byte in one_byte_string
             )
+        else:
+            two_byte_val = 256 * batch[0] + batch[1]
+            track_ids.append(binary_to_id[bin(two_byte_val)[2:].zfill(16)].to_list()[0])
 
-    assert len(track_ids) <= MAX_PLAYLIST_SIZE
+    if len(track_ids) > MAX_PLAYLIST_SIZE:
+        raise ValueError
 
     batched_track_ids = batched(track_ids, 100)
+    print(*batched_track_ids)
     for batch in batched_track_ids:
         sp.send_request(
             endpoint=sp.user_playlist_add_tracks,

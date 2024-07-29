@@ -1,6 +1,6 @@
 [project]
 name = "spotify-file-storage"
-version = "0.1.0"
+version = "0.0.1"
 description = "A proof of concept CLI tool that allows for uploading and downloading files from Spotify playlists."
 authors = [
     { name = "Jack Dyre", email = "83248599+JackDyre@users.noreply.github.com" }
