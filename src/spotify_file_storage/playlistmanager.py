@@ -4,11 +4,11 @@ from itertools import batched
 
 import polars as pl
 
-from spotify_file_storage.requestmanager import sp
+from spotify_file_storage.requestmanager import get_playlist_tracks, sp
 
-binary_to_id = pl.read_json("src/spotify_file_storage/json/binarytoid.json")
-identifier_to_binary = pl.read_json(
-    "src/spotify_file_storage/json/identifiertobinary.json"
+BINARY_TO_ID = pl.read_json("src/spotify_file_storage/json/binary_to_id.json")
+IDENTIFIER_TO_BINARY = pl.read_json(
+    "src/spotify_file_storage/json/identifier_to_binary.json"
 )
 
 MAX_PLAYLIST_SIZE = 10_000
@@ -29,17 +29,16 @@ def upload_bytes(data: bytes, playlist_id: str) -> None:
         if len(batch) == 1:
             one_byte_string = bin(batch[0])[2:].zfill(8)
             track_ids.extend(
-                binary_to_id[byte].to_list()[0] for byte in one_byte_string
+                BINARY_TO_ID[byte].to_list()[0] for byte in one_byte_string
             )
         else:
             two_byte_val = 256 * batch[0] + batch[1]
-            track_ids.append(binary_to_id[bin(two_byte_val)[2:].zfill(16)].to_list()[0])
+            track_ids.append(BINARY_TO_ID[bin(two_byte_val)[2:].zfill(16)].to_list()[0])
 
     if len(track_ids) > MAX_PLAYLIST_SIZE:
         raise ValueError
 
     batched_track_ids = batched(track_ids, 100)
-    print(*batched_track_ids)
     for batch in batched_track_ids:
         sp.send_request(
             endpoint=sp.user_playlist_add_tracks,
@@ -47,6 +46,36 @@ def upload_bytes(data: bytes, playlist_id: str) -> None:
             playlist_id=playlist_id,
             tracks=list(batch),
         )
+
+
+def download_bytes(playlist_id: str) -> bytes:
+    """
+    Retrieve data from the specified playlist.
+
+    :param playlist_id: The ID of the playlist.
+    :return: A bytes object of the retrieved data.
+    """
+    tracks_identifiers = (
+        "||".join(
+            [
+                f"{t['duration_ms']}",
+                t["external_ids"]["isrc"],
+                t["name"],
+                t["album"]["name"],
+                t["album"]["images"][0]["url"],
+            ]
+        )
+        for t in get_playlist_tracks(playlist_id)
+    )
+
+    binary_string = ""
+
+    for identifier in tracks_identifiers:
+        binary_string += IDENTIFIER_TO_BINARY[identifier].to_list()[0]
+
+    return bytes(
+        int(binary_string[i : i + 8], 2) for i in range(0, len(binary_string), 8)
+    )
 
 
 def main() -> None:

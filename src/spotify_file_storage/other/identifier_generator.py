@@ -1,27 +1,47 @@
 """Test."""
 
 import json
+from itertools import batched
 from pathlib import Path
+
+from spotify_file_storage.requestmanager import sp
 
 
 def main() -> None:
-    """Run the man logic."""
-    with Path("trackinfo.json").open("r") as f:
+    """Run the main logic."""
+    with Path("src/spotify_file_storage/json/track_info.json").open("r") as f:
         tinfo = json.load(f)
 
     itb = {}
+    bti = {}
+
+    identifiers = []
 
     for i, t in enumerate(tinfo):
-        if i < 2**16:
-            itb[f"{t['duration_ms']}||{t['external_ids']['isrc']}||{t['name']}"] = bin(
-                i
-            )[2:].zfill(16)
-        else:
-            itb[f"{t['duration_ms']}||{t['external_ids']['isrc']}||{t['name']}"] = (
-                f"{i - 2**16}"
-            )
+        identifier = "||".join(
+            [
+                f"{t['duration_ms']}",
+                t["external_ids"]["isrc"],
+                t["name"],
+                t["album"]["name"],
+                t["album"]["images"][0]["url"],
+            ]
+        )
+        # if identifier in identifiers:
+        #     print(i, t["name"], t["artists"][0]["name"])
+        # else:
+        #     identifiers.append(identifier)
+        tid = t["id"]
+        binary = bin(i)[2:].zfill(16) if i < 2**16 else f"{i - 2 ** 16}"
 
-    with Path("identifiertobinary.json").open("w") as f:
+        itb[identifier] = binary
+        bti[binary] = tid
+
+    print(len(itb) - len(tinfo))
+
+    with Path("src/spotify_file_storage/json/fixed_bti.json").open("w") as f:
+        json.dump(bti, f, indent=4)
+    with Path("src/spotify_file_storage/json/fixed_itb.json").open("w") as f:
         json.dump(itb, f, indent=4)
 
 

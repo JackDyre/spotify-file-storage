@@ -92,10 +92,10 @@ def get_playlist_tracks(playlist_id: str) -> list[dict]:
     play_list_tracks = []
 
     playlist: dict = sp.playlist_items(playlist_id)
-    play_list_tracks.extend(playlist["items"])
+    play_list_tracks.extend(track["track"] for track in playlist["items"])
 
     while playlist["next"]:
         playlist: dict = sp.next(playlist)
-        play_list_tracks.extend(playlist["items"])
+        play_list_tracks.extend(track["track"] for track in playlist["items"])
 
     return play_list_tracks
