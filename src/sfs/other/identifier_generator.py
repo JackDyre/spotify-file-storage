@@ -6,7 +6,7 @@ from pathlib import Path
 
 def main() -> None:
     """Run the main logic."""
-    with Path("src/spotify_file_storage/json/track_info.json").open("r") as f:
+    with Path("src/sfs/json/track_info.json").open("r") as f:
         tinfo = json.load(f)
 
     itb = {}
@@ -36,9 +36,9 @@ def main() -> None:
 
     print(len(itb) - len(tinfo))
 
-    with Path("src/spotify_file_storage/json/fixed_bti.json").open("w") as f:
+    with Path("src/sfs/json/fixed_bti.json").open("w") as f:
         json.dump(bti, f, indent=4)
-    with Path("src/spotify_file_storage/json/fixed_itb.json").open("w") as f:
+    with Path("src/sfs/json/fixed_itb.json").open("w") as f:
         json.dump(itb, f, indent=4)
 
 

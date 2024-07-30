@@ -1,5 +1,5 @@
 [project]
-name = "spotify-file-storage"
+name = "SpotifyFileStorage"
 version = "0.0.1"
 description = "A proof of concept CLI tool that allows for uploading and downloading files from Spotify playlists."
 authors = [
@@ -17,8 +17,6 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project.scripts]
-pm = "spotify_file_storage.playlistmanager:main"
-mk = "spotify_file_storage.other.identifier_generator:main"
 
 [tool.rye]
 managed = true
@@ -28,4 +26,4 @@ dev-dependencies = []
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/spotify_file_storage"]
+packages = ["src/sfs"]

@@ -4,11 +4,11 @@ from itertools import batched
 
 import polars as pl
 
-from spotify_file_storage.requestmanager import get_playlist_tracks, sp
+from sfs.requestmanager import get_playlist_tracks, sp
 
-BINARY_TO_ID = pl.read_json("src/spotify_file_storage/json/binary_to_id.json")
+BINARY_TO_ID = pl.read_json("src/sfs/json/binary_to_id.json")
 IDENTIFIER_TO_BINARY = pl.read_json(
-    "src/spotify_file_storage/json/identifier_to_binary.json"
+    "src/sfs/json/identifier_to_binary.json"
 )
 
 MAX_PLAYLIST_SIZE = 10_000

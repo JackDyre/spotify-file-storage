@@ -17,13 +17,13 @@ charset-normalizer==3.3.2
 idna==3.7
     # via requests
 polars==1.3.0
-    # via spotify-file-storage
+    # via spotifyfilestorage
 redis==5.0.7
     # via spotipy
 requests==2.32.3
     # via spotipy
 spotipy==2.24.0
-    # via spotify-file-storage
+    # via spotifyfilestorage
 urllib3==2.2.2
     # via requests
     # via spotipy
