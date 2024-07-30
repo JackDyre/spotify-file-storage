@@ -1,6 +1,6 @@
+import os
 from itertools import batched
 from pathlib import Path
-import os
 
 with Path("src/spotify_file_storage/json/track_info.json").open("r") as f:
     track_info = f.read()

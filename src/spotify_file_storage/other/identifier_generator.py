@@ -1,10 +1,7 @@
 """Test."""
 
 import json
-from itertools import batched
 from pathlib import Path
-
-from spotify_file_storage.requestmanager import sp
 
 
 def main() -> None:

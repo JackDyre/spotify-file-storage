@@ -17,7 +17,7 @@ from spotipy.oauth2 import SpotifyClientCredentials, SpotifyOAuth
 
 
 def print_progress_bar(iteration: int, total: int):
-    percent = "{0:.1f}".format(100 * ((iteration + 1) / float(total)))
+    percent = f"{100 * ((iteration + 1) / float(total)):.1f}"
     filled_length = int(50 * (iteration + 1) // total)
     bar = "X" * filled_length + "-" * (50 - filled_length)
     print(f"\r|{bar}| {percent}%", end="")
@@ -93,7 +93,7 @@ class APIRequests:
     @staticmethod
     def create_client() -> spotipy.Spotify:
         try:
-            with open("api-credentials.json", "r") as f:
+            with open("api-credentials.json") as f:
                 api_dict = json.load(f)
             client_id = api_dict["cl-id"]
             client_secret = api_dict["cl-secret"]
@@ -367,7 +367,6 @@ def download_from_spotify(
     with open(f"{file_destination}\\{filename}", "wb") as f:
         f.write(gz.decompress(bytes(file_bytes)))
 
-    return None
 
 
 def remove_from_spotify(header_playlist_id: str) -> None:
