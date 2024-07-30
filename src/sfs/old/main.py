@@ -368,7 +368,6 @@ def download_from_spotify(
         f.write(gz.decompress(bytes(file_bytes)))
 
 
-
 def remove_from_spotify(header_playlist_id: str) -> None:
     header_playlist_id = api_request_manager.send_request(
         request=api_request_manager.sp.playlist, playlist_id=header_playlist_id
