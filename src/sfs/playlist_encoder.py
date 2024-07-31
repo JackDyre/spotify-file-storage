@@ -1,10 +1,10 @@
-"""Handles the upload/download of bytes objects to single Spotify playlists."""
+"""Handles the encoding of bytes objects as single Spotify playlists."""
 
 from itertools import batched
 
 import polars as pl
 
-from .requestmanager import get_playlist_tracks, sp
+from .request_manager import get_playlist_tracks, sp
 
 BINARY_TO_ID = pl.read_json("src/sfs/json/binary_to_id.json")
 IDENTIFIER_TO_BINARY = pl.read_json("src/sfs/json/identifier_to_binary.json")

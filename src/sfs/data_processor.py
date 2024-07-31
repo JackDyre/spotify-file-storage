@@ -5,8 +5,8 @@ from base64 import b64decode, b64encode
 from itertools import batched
 
 from .encryption import decrypt, encrypt
-from .playlistmanager import download_bytes, upload_bytes
-from .requestmanager import sp
+from .playlist_encoder import download_bytes, upload_bytes
+from .request_manager import sp
 
 PLAYLIST_DATA_SIZE = 19_950
 
@@ -108,7 +108,3 @@ def unpad(data: bytes) -> bytes:
     data_start = data[0] * 256 + data[1]
 
     return data[data_start:]
-
-
-def main() -> None:
-    """Run main logic."""
