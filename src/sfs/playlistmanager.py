@@ -1,10 +1,10 @@
-"""Handles the upload/download of binary objects to and from Spotify playlists."""
+"""Handles the upload/download of bytes objects to single Spotify playlists."""
 
 from itertools import batched
 
 import polars as pl
 
-from sfs.requestmanager import get_playlist_tracks, sp
+from .requestmanager import get_playlist_tracks, sp
 
 BINARY_TO_ID = pl.read_json("src/sfs/json/binary_to_id.json")
 IDENTIFIER_TO_BINARY = pl.read_json("src/sfs/json/identifier_to_binary.json")
@@ -74,11 +74,3 @@ def download_bytes(playlist_id: str) -> bytes:
     return bytes(
         int(binary_string[i : i + 8], 2) for i in range(0, len(binary_string), 8)
     )
-
-
-def main() -> None:
-    """Run main logic."""
-
-
-if __name__ == "__main__":
-    main()
