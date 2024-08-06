@@ -23,7 +23,6 @@ main = "sfs.__main__:main"
 [tool.rye]
 managed = true
 dev-dependencies = []
-universal = true
 
 [tool.hatch.metadata]
 allow-direct-references = true

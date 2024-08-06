@@ -6,8 +6,8 @@ import polars as pl
 
 from .request_manager import get_playlist_tracks, sp
 
-BINARY_TO_ID = pl.read_json("src/sfs/json/binary_to_id.json")
-IDENTIFIER_TO_BINARY = pl.read_json("src/sfs/json/identifier_to_binary.json")
+BINARY_TO_ID = pl.read_json("json/binary_to_id.json")
+IDENTIFIER_TO_BINARY = pl.read_json("json/identifier_to_binary.json")
 
 MAX_PLAYLIST_SIZE = 10_000
 
