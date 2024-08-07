@@ -1,7 +1,8 @@
 """Parsers for each of the 4 subcommands."""
-import argparse
-from pathlib import Path
 
+import argparse
+
+from ._arg_helpers import _add_id_opt, _add_key_arg, _add_path_arg
 from ._vfs_subcommand_parsers import (
     _parse_vfs_connect_subcommand,
     _parse_vfs_new_subcommand,
@@ -14,19 +15,9 @@ def _parse_upload_subcommand(subparsers: argparse._SubParsersAction) -> None:
         help="Upload a file to Spotify playlist(s)",
     )
 
-    upload_parser.add_argument(
-        "key",
-        type=str,
-        help="Secret key for encrypting the file. Must be unique",
-    )
+    _add_key_arg(upload_parser, "Secret key for encrypting the file")
 
-    upload_parser.add_argument(
-        "filepath",
-        type=lambda p: Path(p)
-        if Path(p).is_file()
-        else (_ for _ in ()).throw(argparse.ArgumentTypeError(f"{p} is not a file")),
-        help="Path to the file to upload",
-    )
+    _add_path_arg(upload_parser, "file", "Path to the file to upload")
 
 
 def _parse_download_subcommand(subparsers: argparse._SubParsersAction) -> None:
@@ -34,25 +25,13 @@ def _parse_download_subcommand(subparsers: argparse._SubParsersAction) -> None:
         "download", help="Download a file from Spotify playlist(s)"
     )
 
-    download_parser.add_argument(
-        "key",
-        type=str,
-        help="Secret key for decrypting the file",
+    _add_key_arg(download_parser, "Secret key for decrypting the file")
+
+    _add_path_arg(
+        download_parser, "dir", "Path to the directory to download the file into"
     )
 
-    download_parser.add_argument(
-        "filepath",
-        type=lambda p: Path(p)
-        if Path(p).is_dir()
-        else (_ for _ in ()).throw(
-            argparse.ArgumentTypeError(f"{p} is not a directory")
-        ),
-        help="Path to the directory to download the file into",
-    )
-
-    download_parser.add_argument(
-        "-i", "--id", type=str, help="The ID of the head playlist of the file"
-    )
+    _add_id_opt(download_parser, "The ID of the head playlist of the file")
 
 
 def _parse_remove_subcommand(subparsers: argparse._SubParsersAction) -> None:
@@ -60,15 +39,9 @@ def _parse_remove_subcommand(subparsers: argparse._SubParsersAction) -> None:
         "remove", help="Remove a single file from Spotify"
     )
 
-    remove_parser.add_argument(
-        "key",
-        type=str,
-        help="Secret key for decrypting the file",
-    )
+    _add_key_arg(remove_parser, "Secret key for decrypting the file")
 
-    remove_parser.add_argument(
-        "-i", "--id", type=str, help="The ID of the head playlist of the file"
-    )
+    _add_id_opt(remove_parser, "The ID of the head playlist of the file")
 
 
 def _parse_vfs_subcommand(subparsers: argparse._SubParsersAction) -> None:

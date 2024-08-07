@@ -1,4 +1,5 @@
 """Private submodule for parsing command line args."""
+
 import argparse
 
 from ._subcommand_parsers import (
