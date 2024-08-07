@@ -30,18 +30,18 @@ class APICredentialsNotFoundError(Exception):
         """)
 
 
-class SpotifyClient:
+class SpotifyClient(spotipy.Spotify):
     """A wrapper for spotipy.Spotify that handles rate limiting client-side."""
 
     def __init__(self) -> None:
-        """Initialize instance with spotify.Spotify instance."""
+        """Initialize instance as a subclass of spotify.Spotify."""
         if not ("CLIENT_ID" in os.environ and "CLIENT_SECRET" in os.environ):
             raise APICredentialsNotFoundError
 
         self._client_id = os.getenv("CLIENT_ID")
         self._client_secret = os.getenv("CLIENT_SECRET")
 
-        self.sp = spotipy.Spotify(
+        super().__init__(
             auth_manager=SpotifyOAuth(
                 client_id=self._client_id,
                 client_secret=self._client_secret,
@@ -51,13 +51,6 @@ class SpotifyClient:
         )
 
         self._recent_request_time = time.time()
-
-    def __getattr__(self, name: str) -> object:
-        """Pass attr queries through to self.sp to make use easier."""
-        if hasattr(self.sp, name):
-            return getattr(self.sp, name)
-
-        raise AttributeError
 
     def send_request(
         self, endpoint: Callable, *args: str | list, **kwargs: str | list
@@ -89,7 +82,7 @@ def get_playlist_tracks(playlist_id: str) -> list[dict]:
     :param playlist_id: The playlist ID, URL, or URI.
     :return: A list of dictionaries containing info about each track.
     """
-    play_list_tracks = []
+    play_list_tracks: list[dict] = []
 
     playlist: dict = sp.playlist_items(playlist_id)
     play_list_tracks.extend(track["track"] for track in playlist["items"])
