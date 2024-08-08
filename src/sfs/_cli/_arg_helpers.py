@@ -1,4 +1,5 @@
 """Abstraction functions for adding arg to argument parsers."""
+
 import argparse
 from pathlib import Path
 

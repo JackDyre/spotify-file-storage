@@ -53,7 +53,7 @@ class SpotifyClient(spotipy.Spotify):
         self._recent_request_time = time.time()
 
     def send_request(
-        self, endpoint: Callable, *args: str | list, **kwargs: str | list
+        self, endpoint: Callable, *args: str | list | dict, **kwargs: str | list | dict
     ) -> dict:
         """
         Handle rate-limiting logic regarding sending a request to Spotify's Web API.
@@ -82,13 +82,18 @@ def get_playlist_tracks(playlist_id: str) -> list[dict]:
     :param playlist_id: The playlist ID, URL, or URI.
     :return: A list of dictionaries containing info about each track.
     """
-    play_list_tracks: list[dict] = []
+    playlist_tracks: list[dict] = []
 
-    playlist: dict = sp.playlist_items(playlist_id)
-    play_list_tracks.extend(track["track"] for track in playlist["items"])
+    playlist: dict = {}
 
-    while playlist["next"]:
-        playlist: dict = sp.next(playlist)
-        play_list_tracks.extend(track["track"] for track in playlist["items"])
+    while True:
+        playlist = (
+            sp.send_request(sp.playlist_items, playlist_id)
+            if not playlist_tracks
+            else sp.send_request(sp.next, playlist)
+        )
+        playlist_tracks.extend(track["track"] for track in playlist["items"])
+        if playlist["next"] is None:
+            break
 
-    return play_list_tracks
+    return playlist_tracks

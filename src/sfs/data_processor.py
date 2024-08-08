@@ -44,7 +44,7 @@ def upload_data(data: bytes, header: dict, key: str) -> str:
 
     next_ids = playlist_ids[1:] + [None]
 
-    playlist_dicts = [{} for _ in range(playlist_count)]
+    playlist_dicts: list[dict] = [{} for _ in range(playlist_count)]
 
     for i, playlist_dict in enumerate(playlist_dicts):
         playlist_dict["content"] = playlist_batches[i]
@@ -90,7 +90,7 @@ def download_data(playlist_id: str, key: str) -> tuple[dict, bytes]:
             if "next" not in data:
                 break
 
-    return header, b64decode(content).decode("utf-8")
+    return header, b64decode(content)
 
 
 def pad(data: bytes, size: int) -> bytes:

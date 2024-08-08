@@ -19,30 +19,27 @@ def upload_bytes(data: bytes, playlist_id: str) -> None:
     :param data: A bytes object to be written.
     :param playlist_id: A string of the playlist ID to write the bytes to.
     """
-    batched_data = batched(data, 2)
+    track_ids: list[str] = []
 
-    track_ids = []
-
-    for batch in batched_data:
-        if len(batch) == 1:
-            one_byte_string = bin(batch[0])[2:].zfill(8)
+    for data_batch in batched(data, 2):
+        if len(data_batch) == 1:
+            one_byte_string = bin(data_batch[0])[2:].zfill(8)
             track_ids.extend(
                 BINARY_TO_ID[byte].to_list()[0] for byte in one_byte_string
             )
         else:
-            two_byte_val = 256 * batch[0] + batch[1]
+            two_byte_val = 256 * data_batch[0] + data_batch[1]
             track_ids.append(BINARY_TO_ID[bin(two_byte_val)[2:].zfill(16)].to_list()[0])
 
     if len(track_ids) > MAX_PLAYLIST_SIZE:
         raise ValueError
 
-    batched_track_ids = batched(track_ids, 100)
-    for batch in batched_track_ids:
+    for track_id_batch in batched(track_ids, 100):
         sp.send_request(
             endpoint=sp.user_playlist_add_tracks,
-            user=sp.current_user,
+            user=sp.current_user()["id"],
             playlist_id=playlist_id,
-            tracks=list(batch),
+            tracks=list(track_id_batch),
         )
 
 
