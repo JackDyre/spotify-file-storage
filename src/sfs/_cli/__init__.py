@@ -25,6 +25,3 @@ def _parse_arguments() -> argparse.Namespace:
     _parse_vfs_subcommand(subparsers)
 
     return parser.parse_args()
-
-
-PARSED_ARGS = _parse_arguments()

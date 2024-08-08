@@ -19,7 +19,7 @@ build-backend = "hatchling.build"
 
 [project.scripts]
 main = "sfs.__main__:main"
-sfs = "sfs._cli:main"
+sfs = "sfs:main"
 
 [tool.rye]
 managed = true
