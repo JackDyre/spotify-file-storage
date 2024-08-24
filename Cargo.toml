@@ -8,3 +8,4 @@ serde = { version = "1.0.208", features = ["derive"] }
 serde_urlencoded = "0.7.1"
 tiny_http = "0.12.0"
 url = "2.5.2"
+webbrowser = "1.0.1"
