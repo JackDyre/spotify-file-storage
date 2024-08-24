@@ -1,0 +1,10 @@
+[package]
+name = "sfs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1.0.208", features = ["derive"] }
+serde_urlencoded = "0.7.1"
+tiny_http = "0.12.0"
+url = "2.5.2"
