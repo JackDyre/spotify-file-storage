@@ -1,0 +1,10 @@
+# Directories
+__pycache__/
+.venv/
+.idea/
+.ruff_cache/
+.mypy_cache/
+
+# Files
+api-credentials.json
+.cache
