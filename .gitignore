@@ -1,1 +1,7 @@
+# Directories:
 /target
+
+# -----
+
+# Files:
+Cargo.lock
