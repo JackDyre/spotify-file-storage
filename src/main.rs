@@ -1,7 +1,5 @@
-use reqwest::{
-    blocking::Client,
-    header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE},
-};
+use reqwest::blocking::Client;
+use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
 use tiny_http::{Response, Server};
 use url::Url;
