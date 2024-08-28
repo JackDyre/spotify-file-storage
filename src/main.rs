@@ -1,37 +1,18 @@
+use sfs::*;
 use url::Url;
 
 #[tokio::main]
 async fn main() {
+    let creds = Creds::new(
+        "592557b25f744f2abdd7234c2d668346",
+        "2ce9de831a524fd7b1231929d9f3abcd",
+    );
+
+    let auth_code: AuthCode = creds.into();
+
+    let url = Url::try_from(auth_code).unwrap().to_string();
+
+    dbg!(url);
 
 }
 
-struct Creds {
-    id: String,
-    secret: String,
-}
-
-impl Creds {
-    fn new(id: &str, secret: &str) -> Creds {
-        Creds {
-            id: String::from(id),
-            secret: String::from(secret),
-        }
-    }
-}
-
-async fn auth(creds: Creds) -> Result<(), String> {
-    let url = Url::parse("https://accounts.spotify.com/authorize");
-    todo!();
-    Ok(())
-}
-
-struct AuthCode {
-    client_id: String,
-    response_type: String,
-    redirect_uri: String,
-    scope: String,
-}
-
-impl From<Creds> for AuthCode {
-    fn from<Creds>:wqwa
-}
