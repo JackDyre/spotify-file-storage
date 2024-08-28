@@ -33,7 +33,7 @@ impl From<Creds> for AuthCode {
         AuthCode {
             client_id: creds.id,
             response_type: String::from("code"),
-            redirect_uri: String::from("http://localhost:8000/callback"),
+            redirect_uri: String::from("http://localhost:8888/callback"),
             scope: format!(
                 "{} {} {}",
                 "playlist-read-private", "playlist-modify-public", "playlist-modify-private"

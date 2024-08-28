@@ -1,5 +1,4 @@
 use sfs::*;
-use url::Url;
 
 #[tokio::main]
 async fn main() {
@@ -10,9 +9,7 @@ async fn main() {
 
     let auth_code: AuthCode = creds.into();
 
-    let url = Url::try_from(auth_code).unwrap().to_string();
+    let url = url::Url::try_from(auth_code).unwrap().to_string();
 
-    dbg!(url);
-
+    webbrowser::open(&url).unwrap();
 }
-
