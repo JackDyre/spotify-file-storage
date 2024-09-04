@@ -1,10 +1,14 @@
-use serde::Serialize;
+use std::fmt::Debug;
+
+use serde::{Deserialize, Serialize};
+use tiny_http::Server;
 use url::Url;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Creds {
     id: String,
     secret: String,
+    code: Option<String>,
 }
 
 impl Creds {
@@ -12,13 +16,40 @@ impl Creds {
         Creds {
             id: String::from(id),
             secret: String::from(secret),
+            code: None,
         }
     }
 }
 
-// async fn auth(creds: Creds) -> Result<(), String> {
-// todo!();
-//}
+pub async fn auth(creds: Creds) -> Result<(), String> {
+    let auth_code: AuthCode = creds.clone().into();
+    let url = url::Url::try_from(auth_code)?.to_string();
+    let callback = capture_callback(&url);
+    let creds = parse_callback(creds, callback)?;
+    dbg!(creds);
+    Ok(())
+}
+
+fn capture_callback(url: &str) -> AuthCodeCallback {
+    let server = Server::http("0.0.0.0:8888").unwrap();
+    webbrowser::open(&url).unwrap();
+    let request = server.recv().unwrap();
+    let callback = AuthCodeCallback::parse_callback_url(&request.url()).unwrap();
+    callback
+}
+
+fn parse_callback(creds: Creds, callback: AuthCodeCallback) -> Result<Creds, String> {
+    match callback.error {
+        Some(_) => return Err(String::from("Error during authentication")),
+        None => (),
+    };
+
+    Ok(Creds {
+        id: creds.id,
+        secret: creds.secret,
+        code: callback.code,
+    })
+}
 
 #[derive(Debug, Serialize)]
 pub struct AuthCode {
@@ -62,5 +93,21 @@ impl TryFrom<AuthCode> for Url {
         };
 
         Ok(parsed_url)
+    }
+}
+#[derive(Deserialize, Debug)]
+struct AuthCodeCallback {
+    code: Option<String>,
+    error: Option<String>,
+    _state: Option<String>,
+}
+
+impl AuthCodeCallback {
+    fn parse_callback_url(url: &str) -> Result<AuthCodeCallback, String> {
+        if !url.starts_with("/callback?") {
+            return Err(String::from("Error while trying to parse callback url."));
+        }
+
+        Ok(serde_urlencoded::from_str(&url[10..]).unwrap())
     }
 }
