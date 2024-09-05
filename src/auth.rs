@@ -1,4 +1,4 @@
-use base64::encode;
+use base64::{engine::general_purpose::STANDARD as b64, Engine};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use std::fmt::Debug;
 
@@ -13,20 +13,19 @@ pub async fn auth(creds: Creds) -> Result<(), String> {
 
     let creds = AuthCodeCallback::capture(&url, creds);
 
-    get_token(&creds).await.unwrap();
+    let token = get_token(&creds).await.unwrap();
 
-    dbg!(creds);
+    println!("{token}");
+
     Ok(())
-}
-
-#[derive(Deserialize)]
-struct AccessToken {
-    access_token: String,
 }
 
 async fn get_token(creds: &Creds) -> Result<String, String> {
     let creds = creds.clone();
-    let auth_header_val = format!("Basic {}", encode(format!("{}:{}", creds.id, creds.secret)));
+    let auth_header_val = format!(
+        "Basic {}",
+        b64.encode(format!("{}:{}", creds.id, creds.secret))
+    );
     let mut headers = HeaderMap::new();
     headers.insert(
         CONTENT_TYPE,
@@ -50,10 +49,7 @@ async fn get_token(creds: &Creds) -> Result<String, String> {
         .await
         .unwrap();
 
-    dbg!(response.text().await.unwrap());
-
-    Ok(String::from("ok"))
-
+    Ok(response.text().await.unwrap())
 }
 
 #[derive(Debug, Clone)]
