@@ -1,3 +1,3 @@
 mod auth;
 
-pub use auth::{auth, Creds};
+pub use auth::{auth, AccessToken, Creds};

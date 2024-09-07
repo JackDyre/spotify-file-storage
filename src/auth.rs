@@ -1,26 +1,35 @@
 use base64::{engine::general_purpose::STANDARD as b64, Engine};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
-use std::fmt::Debug;
-
 use serde::{Deserialize, Serialize};
+use std::error::Error;
+use std::fmt::Debug;
 use tiny_http::Server;
 use url::Url;
 
-pub async fn auth(creds: Creds) -> Result<(), String> {
+#[derive(Deserialize, Debug)]
+pub struct AccessToken {
+    access_token: String,
+    expires_in: i32,
+    refresh_token: String,
+    scope: String,
+    token_type: String,
+}
+
+pub async fn auth(creds: Creds) -> Result<AccessToken, Box<dyn Error>> {
     let auth_code = creds.to_auth_code_request();
 
     let url = url::Url::try_from(auth_code)?.to_string();
 
     let creds = AuthCodeCallback::capture(&url, creds);
 
-    let token = get_token(&creds).await.unwrap();
+    let token = get_token(&creds).await?;
 
-    println!("{token}");
+    dbg!(&token);
 
-    Ok(())
+    Ok(token)
 }
 
-async fn get_token(creds: &Creds) -> Result<String, String> {
+async fn get_token(creds: &Creds) -> Result<AccessToken, String> {
     let creds = creds.clone();
     let auth_header_val = format!(
         "Basic {}",
@@ -36,8 +45,7 @@ async fn get_token(creds: &Creds) -> Result<String, String> {
         HeaderValue::from_str(&auth_header_val).unwrap(),
     );
 
-    let client = reqwest::Client::new();
-    let response = client
+    let response = reqwest::Client::new()
         .post("https://accounts.spotify.com/api/token")
         .headers(headers)
         .form(&[
@@ -49,7 +57,9 @@ async fn get_token(creds: &Creds) -> Result<String, String> {
         .await
         .unwrap();
 
-    Ok(response.text().await.unwrap())
+    let token = response.text().await.unwrap();
+
+    Ok(serde_json::from_str::<AccessToken>(&token).unwrap())
 }
 
 #[derive(Debug, Clone)]
@@ -82,7 +92,7 @@ impl Creds {
 }
 
 #[derive(Debug, Serialize)]
-pub struct AuthCode {
+struct AuthCode {
     client_id: String,
     response_type: String,
     redirect_uri: String,

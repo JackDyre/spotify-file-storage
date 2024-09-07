@@ -1,10 +1,10 @@
 use sfs::{auth, Creds};
 
 #[tokio::main]
-async fn main() {
     let creds = Creds::new("", "");
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
-    auth(creds).await.unwrap();
+    auth(creds).await?;
 
-    println!("hello world")
+    Ok(())
 }
