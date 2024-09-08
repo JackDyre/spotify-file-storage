@@ -1,12 +1,9 @@
-use sfs::{auth, Creds};
+use sfs::Credentials;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let creds = Creds::new("", "");
-
-    let token = auth(creds).await?;
-
-    dbg!(token);
+    creds.get_auth_code()?;
 
     Ok(())
 }
