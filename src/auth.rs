@@ -1,14 +1,14 @@
 use crate::error::SfsError;
 use base64::{engine::general_purpose::STANDARD as b64, Engine};
+use rand::{distributions::Alphanumeric, Rng};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
-use std::fmt::Debug;
 use std::{error::Error, marker::PhantomData};
 use url::Url;
 
 #[doc(hidden)]
 pub struct NoAuthCode;
-#[derive(Debug)]
+#[doc(hidden)]
 pub struct AuthCodePresent;
 
 pub struct Credentials<State> {
@@ -25,7 +25,11 @@ impl Credentials<NoAuthCode> {
             client_id: String::from(client_id),
             client_secret: String::from(client_secret),
             authorization_code: None,
-            state: String::from("test"),
+            state: rand::thread_rng()
+                .sample_iter(&Alphanumeric)
+                .take(64)
+                .map(char::from)
+                .collect(),
             auth_code_state: PhantomData,
         }
     }
@@ -81,13 +85,45 @@ impl Credentials<NoAuthCode> {
     }
 }
 
-#[derive(Deserialize)]
+impl Credentials<AuthCodePresent> {
+    pub async fn get_access_token(&self) -> Result<AccessToken, Box<dyn Error>> {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            CONTENT_TYPE,
+            HeaderValue::from_static("application/x-www-form-urlencoded"),
+        );
+        headers.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!(
+                "Basic {}",
+                b64.encode(format!("{}:{}", self.client_id, self.client_secret))
+            ))?,
+        );
+
+        let response = reqwest::Client::new()
+            .post("https://accounts.spotify.com/api/token")
+            .headers(headers)
+            .form(&[
+                ("code", self.authorization_code.clone().unwrap()),
+                ("redirect_uri", "http://localhost:8888/callback".to_string()),
+                ("grant_type", "authorization_code".to_string()),
+            ])
+            .send()
+            .await?;
+
+        let token: AccessToken = serde_json::from_str(&response.text().await?)?;
+
+        Ok(token)
+    }
+}
+
+#[derive(Deserialize, Debug)]
 pub struct AccessToken {
     pub access_token: String,
-    _token_type: String,
-    _scope: String,
-    _expires_in: i32,
-    _refresh_token: String,
+    token_type: String,
+    scope: String,
+    expires_in: i32,
+    refresh_token: String,
 }
 
 #[derive(Serialize)]
