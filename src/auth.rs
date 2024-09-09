@@ -6,11 +6,21 @@ use serde::{Deserialize, Serialize};
 use std::{error::Error, marker::PhantomData};
 use url::Url;
 
+pub async fn authenticate(creds: &Credentials<NoAuthCode>) -> Result<AccessToken, Box<dyn Error>> {
+    let creds = creds.clone();
+    let creds = creds.get_auth_code()?;
+    let token = creds.get_access_token().await?;
+    Ok(token)
+}
+
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct NoAuthCode;
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct AuthCodePresent;
 
+#[derive(Clone)]
 pub struct Credentials<State> {
     pub client_id: String,
     pub client_secret: String,
