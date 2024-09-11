@@ -1,10 +1,11 @@
-use crate::error::SfsError;
 use base64::{engine::general_purpose::STANDARD as b64, Engine};
 use rand::{distributions::Alphanumeric, Rng};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
 use std::{error::Error, marker::PhantomData};
 use url::Url;
+
+use crate::error::SfsError;
 
 pub async fn authenticate(creds: &Credentials<NoAuthCode>) -> Result<AccessToken, Box<dyn Error>> {
     let creds = creds.clone();
