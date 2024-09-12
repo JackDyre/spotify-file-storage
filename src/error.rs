@@ -1,4 +1,7 @@
-#[derive(Debug)]
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+#[error("{msg}")]
 pub struct SfsError {
     msg: String,
 }
@@ -14,11 +17,3 @@ impl SfsError {
         Box::new(SfsError::new(msg))
     }
 }
-
-impl std::fmt::Display for SfsError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.msg)
-    }
-}
-
-impl std::error::Error for SfsError {}
