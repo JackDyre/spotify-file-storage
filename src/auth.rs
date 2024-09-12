@@ -1,13 +1,14 @@
+use anyhow::Result;
 use base64::{engine::general_purpose::STANDARD as b64, Engine};
 use rand::{distributions::Alphanumeric, Rng};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
-use std::{error::Error, marker::PhantomData};
+use std::marker::PhantomData;
 use url::Url;
 
-use crate::error::SfsError;
+use crate::error::AuthError;
 
-pub async fn authenticate(creds: &Credentials<NoAuthCode>) -> Result<AccessToken, Box<dyn Error>> {
+pub async fn authenticate(creds: &Credentials<NoAuthCode>) -> Result<AccessToken> {
     let creds = creds.clone();
     let creds = creds.get_auth_code()?;
     let token = creds.get_access_token().await?;
@@ -45,7 +46,7 @@ impl Credentials<NoAuthCode> {
         }
     }
 
-    pub fn get_auth_code(self) -> Result<Credentials<AuthCodePresent>, Box<dyn Error>> {
+    pub fn get_auth_code(self) -> Result<Credentials<AuthCodePresent>> {
         let base_url = "https://accounts.spotify.com/authorize?";
 
         let auth_code_request = AuthCodeRequest::new(&self);
@@ -60,16 +61,16 @@ impl Credentials<NoAuthCode> {
         let callback_url = request.url();
 
         if !callback_url.starts_with("/callback?") {
-            return Err(SfsError::new_box("Error parsing callback url"));
+            return Err(AuthError::InvalidCallback.into());
         }
 
         let callback = serde_urlencoded::from_str::<AuthCodeCallback>(&callback_url[10..])?;
 
         if callback.error.is_some() {
-            return Err(SfsError::new_box("Error during authentication."));
+            return Err(AuthError::DuringAuthorization.into());
         }
         if &callback.state != &self.state {
-            return Err(SfsError::new_box("Mismatched states"));
+            return Err(AuthError::MismatchedStates.into());
         }
 
         request.respond(
@@ -97,7 +98,7 @@ impl Credentials<NoAuthCode> {
 }
 
 impl Credentials<AuthCodePresent> {
-    pub async fn get_access_token(&self) -> Result<AccessToken, Box<dyn Error>> {
+    pub async fn get_access_token(&self) -> Result<AccessToken> {
         let mut headers = HeaderMap::new();
         headers.insert(
             CONTENT_TYPE,

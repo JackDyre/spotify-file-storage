@@ -1,19 +1,11 @@
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-#[error("{msg}")]
-pub struct SfsError {
-    msg: String,
-}
-
-impl SfsError {
-    pub fn new(msg: &str) -> SfsError {
-        SfsError {
-            msg: msg.to_string(),
-        }
-    }
-
-    pub fn new_box(msg: &str) -> Box<SfsError> {
-        Box::new(SfsError::new(msg))
-    }
+pub enum AuthError {
+    #[error("The captured callback url was malformed")]
+    InvalidCallback,
+    #[error("Authorization callback returned an error")]
+    DuringAuthorization,
+    #[error("State sent to Spotify does not match the one returned")]
+    MismatchedStates,
 }
