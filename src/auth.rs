@@ -1,12 +1,10 @@
-use anyhow::Result;
+use anyhow::{ensure, Result};
 use base64::{engine::general_purpose::STANDARD as b64, Engine};
 use rand::{distributions::Alphanumeric, Rng};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
 use url::Url;
-
-use crate::error::AuthError;
 
 pub async fn authenticate(creds: &Credentials<NoAuthCode>) -> Result<AccessToken> {
     let creds = creds.clone();
@@ -60,18 +58,21 @@ impl Credentials<NoAuthCode> {
         let request = server.recv()?;
         let callback_url = request.url();
 
-        if !callback_url.starts_with("/callback?") {
-            return Err(AuthError::InvalidCallback.into());
-        }
+        ensure!(
+            callback_url.starts_with("/callback?"),
+            "The captured callback url was malformed"
+        );
 
         let callback = serde_urlencoded::from_str::<AuthCodeCallback>(&callback_url[10..])?;
 
-        if callback.error.is_some() {
-            return Err(AuthError::DuringAuthorization.into());
-        }
-        if &callback.state != &self.state {
-            return Err(AuthError::MismatchedStates.into());
-        }
+        ensure!(
+            callback.error.is_none(),
+            "Authorization callback returned an error"
+        );
+        ensure!(
+            callback.state == self.state,
+            "State sent to Spotify does not match the one returned"
+        );
 
         request.respond(
             tiny_http::Response::from_string(
