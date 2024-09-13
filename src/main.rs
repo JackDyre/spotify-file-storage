@@ -1,5 +1,7 @@
-use anyhow::Result;
 use sfs::auth::{authenticate, Credentials};
+use sfs::request::UserID;
+
+use anyhow::Result;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -7,7 +9,8 @@ async fn main() -> Result<()> {
 
     let token = authenticate(&creds).await?;
 
-    dbg!(token);
+    let id = UserID::new(&token).await?;
 
+    dbg!(id);
     Ok(())
 }
