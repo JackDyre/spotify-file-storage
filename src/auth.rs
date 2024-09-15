@@ -1,9 +1,12 @@
+use std::env;
+use std::marker::PhantomData;
+
 use anyhow::{ensure, Result};
 use base64::{engine::general_purpose::STANDARD as b64, Engine};
+use dotenvy::dotenv;
 use rand::{distributions::Alphanumeric, Rng};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
-use std::marker::PhantomData;
 use url::Url;
 
 pub async fn authenticate(creds: &Credentials<NoAuthCode>) -> Result<AccessToken> {
@@ -42,6 +45,15 @@ impl Credentials<NoAuthCode> {
                 .collect(),
             auth_code_state: PhantomData,
         }
+    }
+
+    pub fn from_env() -> Result<Credentials<NoAuthCode>> {
+        dotenv().ok();
+
+        let client_id = env::var("SFS_CLIENT_ID")?;
+        let client_secret = env::var("SFS_CLIENT_SECRET")?;
+
+        Ok(Credentials::new(&client_id, &client_secret))
     }
 
     pub fn get_auth_code(self) -> Result<Credentials<AuthCodePresent>> {

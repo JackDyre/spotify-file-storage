@@ -5,12 +5,13 @@ use anyhow::Result;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let creds = Credentials::new("", "");
+    let creds = Credentials::from_env()?;
 
     let token = authenticate(&creds).await?;
 
     let id = UserID::new(&token).await?;
 
     dbg!(id);
+
     Ok(())
 }
