@@ -1,5 +1,4 @@
 use std::env;
-use std::marker::PhantomData;
 
 use anyhow::{ensure, Result};
 use base64::{engine::general_purpose::STANDARD as b64, Engine};
@@ -9,45 +8,50 @@ use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-pub async fn authenticate(creds: &Credentials<NoAuthCode>) -> Result<AccessToken> {
-    let creds = creds.clone();
-    let creds = creds.get_auth_code()?;
-    let token = creds.get_access_token().await?;
-    Ok(token)
+const PORT: i32 = 8888;
+
+pub async fn authenticate(creds: Credentials<AuthCodeNotPresent>) -> Result<AccessToken> {
+    creds.get_auth_code()?.get_access_token().await
 }
 
 #[doc(hidden)]
 #[derive(Clone)]
-pub struct NoAuthCode;
+pub struct AuthCodeNotPresent;
 #[doc(hidden)]
 #[derive(Clone)]
-pub struct AuthCodePresent;
+pub struct AuthCodePresent(String);
+
+#[doc(hidden)]
+pub trait AuthCodeStates {}
+impl AuthCodeStates for AuthCodeNotPresent {}
+impl AuthCodeStates for AuthCodePresent {}
 
 #[derive(Clone)]
-pub struct Credentials<State> {
+pub struct Credentials<AuthCodeState>
+where
+    AuthCodeState: AuthCodeStates,
+{
     pub client_id: String,
     pub client_secret: String,
-    authorization_code: Option<String>,
+    authorization_code: AuthCodeState,
     state: String,
-    auth_code_state: PhantomData<State>,
 }
 
-impl Credentials<NoAuthCode> {
-    pub fn new(client_id: &str, client_secret: &str) -> Credentials<NoAuthCode> {
+impl Credentials<AuthCodeNotPresent> {
+    pub fn new(client_id: &str, client_secret: &str) -> Credentials<AuthCodeNotPresent> {
         Credentials {
             client_id: String::from(client_id),
             client_secret: String::from(client_secret),
-            authorization_code: None,
+            authorization_code: AuthCodeNotPresent,
             state: rand::thread_rng()
                 .sample_iter(&Alphanumeric)
                 .take(64)
                 .map(char::from)
                 .collect(),
-            auth_code_state: PhantomData,
         }
     }
 
-    pub fn from_env() -> Result<Credentials<NoAuthCode>> {
+    pub fn from_env() -> Result<Credentials<AuthCodeNotPresent>> {
         dotenv().ok();
 
         let client_id = env::var("SFS_CLIENT_ID")?;
@@ -64,7 +68,8 @@ impl Credentials<NoAuthCode> {
 
         let auth_code_request_url = Url::parse(&format!("{}{}", base_url, url_params))?;
 
-        let server = tiny_http::Server::http("0.0.0.0:8888").unwrap();
+        let server = tiny_http::Server::http(format!("0.0.0.0:{PORT}"))
+            .expect("Error starting http server.");
         webbrowser::open(auth_code_request_url.as_str())?;
 
         let request = server.recv()?;
@@ -103,15 +108,14 @@ impl Credentials<NoAuthCode> {
         Credentials {
             client_id: self.client_id,
             client_secret: self.client_secret,
-            authorization_code: Some(auth_code.to_string()),
+            authorization_code: AuthCodePresent(auth_code.to_string()),
             state: self.state,
-            auth_code_state: PhantomData,
         }
     }
 }
 
 impl Credentials<AuthCodePresent> {
-    pub async fn get_access_token(&self) -> Result<AccessToken> {
+    pub async fn get_access_token(self) -> Result<AccessToken> {
         let mut headers = HeaderMap::new();
         headers.insert(
             CONTENT_TYPE,
@@ -129,8 +133,8 @@ impl Credentials<AuthCodePresent> {
             .post("https://accounts.spotify.com/api/token")
             .headers(headers)
             .form(&[
-                ("code", self.authorization_code.clone().unwrap()),
-                ("redirect_uri", "http://localhost:8888/callback".to_string()),
+                ("code", self.authorization_code.0),
+                ("redirect_uri", format!("http://localhost:{PORT}/callback")),
                 ("grant_type", "authorization_code".to_string()),
             ])
             .send()
@@ -161,11 +165,11 @@ struct AuthCodeRequest {
 }
 
 impl AuthCodeRequest {
-    fn new(creds: &Credentials<NoAuthCode>) -> AuthCodeRequest {
+    fn new(creds: &Credentials<AuthCodeNotPresent>) -> AuthCodeRequest {
         AuthCodeRequest {
             client_id: creds.client_id.clone(),
             response_type: "code".to_string(),
-            redirect_uri: "http://localhost:8888/callback".to_string(),
+            redirect_uri: format!("http://localhost:{PORT}/callback"),
             state: creds.state.clone(),
             scope: format!(
                 "{} {} {}",

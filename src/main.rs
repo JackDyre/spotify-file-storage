@@ -7,7 +7,7 @@ use anyhow::Result;
 async fn main() -> Result<()> {
     let creds = Credentials::from_env()?;
 
-    let token = authenticate(&creds).await?;
+    let token = authenticate(creds).await?;
 
     let id = UserID::new(&token).await?;
 
