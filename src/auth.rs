@@ -1,9 +1,3 @@
-//! Spotify Web API authentication.
-//!
-//! Handles logic for authenticating with the Spotify Web API using the authorization code flow.
-//!
-//! To authenticate, create a [`Credentials`] instance and call [`authenticate()`] on it.
-
 use std::env;
 
 use anyhow::{ensure, Result};
@@ -18,11 +12,6 @@ const PORT: i32 = 8888;
 const AUTHORIZATION_BASE_URL: &str = "https://accounts.spotify.com/authorize";
 const ACCESS_TOKEN_BASE_URL: &str = "https://accounts.spotify.com/api/token";
 
-/// Uses [`Credentials`] to authenticate with the Spotify Web API.
-///
-/// Takes an [`Credentials`] instance without an authorization code, uses the credentials
-/// to retrieve an authorization code, and uses the authorization code to retrieve the
-/// [`AccessToken`].
 pub async fn authenticate(creds: Credentials<AuthCodeNotPresent>) -> Result<AccessToken> {
     creds.get_auth_code()?.get_access_token().await
 }
@@ -34,14 +23,6 @@ pub trait AuthCodeStates: private::Sealed {}
 impl AuthCodeStates for AuthCodeNotPresent {}
 impl AuthCodeStates for AuthCodePresent {}
 
-/// API Credentials for the Spotify Web API.
-///
-/// Always instantiated in the [`AuthCodeNotPresent`] state.
-///
-/// The credentials are used to then retrieve the authorization code, transitioning to the
-/// [`AuthCodePresent`] state.
-///
-/// Can be used in the [`AuthCodePresent`] state retrieve an [`AccessToken`].
 pub struct Credentials<AuthCodeState>
 where
     AuthCodeState: AuthCodeStates,
@@ -53,8 +34,6 @@ where
 }
 
 impl Credentials<AuthCodeNotPresent> {
-    /// Creates a new [`Credentials`] instance in the [`AuthCodeNotPresent`] state with the
-    /// provided client id and secret.
     pub fn new(client_id: &str, client_secret: &str) -> Credentials<AuthCodeNotPresent> {
         Credentials {
             client_id: String::from(client_id),
@@ -68,9 +47,6 @@ impl Credentials<AuthCodeNotPresent> {
         }
     }
 
-    /// Creates a new [`Credentials`] instance in the [`AuthCodeNotPresent`] state after attemping
-    /// to retrieve the client id and secret from environment variables or a .env file as
-    /// `SFS_CLIENT_ID` and `SFS_CLIENT_SECRET` respectively.
     pub fn from_env() -> Result<Credentials<AuthCodeNotPresent>> {
         dotenv().ok();
 
@@ -81,8 +57,7 @@ impl Credentials<AuthCodeNotPresent> {
     }
 
     pub fn get_auth_code(self) -> Result<Credentials<AuthCodePresent>> {
-        let auth_code_request = AuthCodeRequest::new(&self);
-        let url_params = serde_urlencoded::to_string(&auth_code_request)?;
+        let url_params = serde_urlencoded::to_string(AuthCodeRequest::new(&self))?;
 
         let auth_code_request_url =
             Url::parse(&format!("{}?{}", AUTHORIZATION_BASE_URL, url_params))?;
