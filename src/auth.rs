@@ -1,8 +1,7 @@
 use std::env;
 
-use anyhow::{ensure, Result};
+use anyhow::{bail, Result};
 use base64::{engine::general_purpose::STANDARD as b64, Engine};
-use dotenvy::dotenv;
 use rand::{distributions::Alphanumeric, Rng};
 use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
@@ -48,61 +47,22 @@ impl Credentials<AuthCodeNotPresent> {
     }
 
     pub fn from_env() -> Result<Credentials<AuthCodeNotPresent>> {
-        dotenv().ok();
-
+        dotenvy::dotenv()?;
         let client_id = env::var("SFS_CLIENT_ID")?;
         let client_secret = env::var("SFS_CLIENT_SECRET")?;
-
         Ok(Credentials::new(&client_id, &client_secret))
     }
 
     pub fn get_auth_code(self) -> Result<Credentials<AuthCodePresent>> {
-        let url_params = serde_urlencoded::to_string(AuthCodeRequest::new(&self))?;
-
-        let auth_code_request_url =
-            Url::parse(&format!("{}?{}", AUTHORIZATION_BASE_URL, url_params))?;
-
-        let server = tiny_http::Server::http(format!("0.0.0.0:{PORT}"))
-            .expect("Error starting http server.");
-        webbrowser::open(auth_code_request_url.as_str())?;
-
-        let request = server.recv()?;
-        let callback_url = request.url();
-
-        ensure!(
-            callback_url.starts_with("/callback?"),
-            "The captured callback url was malformed"
-        );
-
-        let callback = serde_urlencoded::from_str::<AuthCodeCallback>(&callback_url[10..])?;
-
-        ensure!(
-            callback.error.is_none(),
-            "Authorization callback returned an error"
-        );
-        ensure!(
-            callback.state == self.state,
-            "State sent to Spotify does not match the one returned"
-        );
-
-        request.respond(
-            tiny_http::Response::from_string(
-                "<html><body><script>window.close();</script></body></html>",
-            )
-            .with_header(tiny_http::Header {
-                field: "Content-Type".parse().unwrap(),
-                value: "text/html".parse().unwrap(),
-            }),
-        )?;
-
-        Ok(self.add_auth_code(&callback.code.unwrap()))
+        let auth_code = CallbackCaptureServer::new(&self)?.capture()?;
+        Ok(self.add_auth_code(auth_code))
     }
 
-    fn add_auth_code(self, auth_code: &str) -> Credentials<AuthCodePresent> {
+    fn add_auth_code(self, auth_code: String) -> Credentials<AuthCodePresent> {
         Credentials {
             client_id: self.client_id,
             client_secret: self.client_secret,
-            authorization_code: AuthCodePresent(auth_code.to_string()),
+            authorization_code: AuthCodePresent(auth_code),
             state: self.state,
         }
     }
@@ -179,6 +139,71 @@ struct AuthCodeCallback {
     code: Option<String>,
     error: Option<String>,
     state: String,
+}
+
+impl AuthCodeCallback {
+    fn parse_for_code(self, capture_server: &CallbackCaptureServer) -> Result<String> {
+        if self.error.is_some() {
+            bail!("Authorization callback returned an error")
+        }
+        if capture_server.state != self.state {
+            bail!("State sent to Spotify does not match the one returned")
+        }
+        let code = match self.code {
+            Some(c) => c,
+            None => bail!("Auth code not present in callback"),
+        };
+        Ok(code)
+    }
+}
+
+struct CallbackCaptureServer {
+    server: tiny_http::Server,
+    prompt_url: String,
+    state: String,
+}
+
+impl CallbackCaptureServer {
+    fn new(creds: &Credentials<AuthCodeNotPresent>) -> Result<CallbackCaptureServer> {
+        let server = match tiny_http::Server::http(format!("0.0.0.0:{PORT}")) {
+            Ok(s) => s,
+            Err(e) => bail!(e),
+        };
+        let prompt_url_params = serde_urlencoded::to_string(AuthCodeRequest::new(&creds))?;
+        Ok(CallbackCaptureServer {
+            server,
+            prompt_url: Url::parse(&format!("{}?{}", AUTHORIZATION_BASE_URL, prompt_url_params))?
+                .to_string(),
+            state: creds.state.clone(),
+        })
+    }
+
+    fn capture(self) -> Result<String> {
+        webbrowser::open(&self.prompt_url)?;
+        let request = self.server.recv()?;
+
+        let callback_url = if request.url().starts_with("/callback?") {
+            &request.url()[10..]
+        } else {
+            bail!("The captured callback url was malformed")
+        };
+
+        let callback = serde_urlencoded::from_str::<AuthCodeCallback>(callback_url)?;
+
+        let code = callback.parse_for_code(&self)?;
+
+        request.respond(
+            tiny_http::Response::from_string(
+                "<html><body><script>window.close();</script></body></html>",
+            )
+            .with_header(tiny_http::Header {
+                field: "Content-Type".parse().unwrap(),
+                value: "text/html".parse().unwrap(),
+            }),
+        )?;
+
+        Ok(code)
+    }
 }
 
 mod private {
