@@ -142,11 +142,11 @@ struct AuthCodeCallback {
 }
 
 impl AuthCodeCallback {
-    fn parse_for_code(self, capture_server: &CallbackCaptureServer) -> Result<String> {
+    fn parse_for_code(self, state: String) -> Result<String> {
         if self.error.is_some() {
             bail!("Authorization callback returned an error")
         }
-        if capture_server.state != self.state {
+        if state != self.state {
             bail!("State sent to Spotify does not match the one returned")
         }
         let code = match self.code {
@@ -190,7 +190,7 @@ impl CallbackCaptureServer {
 
         let callback = serde_urlencoded::from_str::<AuthCodeCallback>(callback_url)?;
 
-        let code = callback.parse_for_code(&self)?;
+        let code = callback.parse_for_code(self.state)?;
 
         request.respond(
             tiny_http::Response::from_string(
