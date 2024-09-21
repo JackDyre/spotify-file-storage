@@ -1,9 +1,8 @@
 use std::env;
 
 use anyhow::{bail, Result};
-use base64::{engine::general_purpose::STANDARD as b64, Engine};
 use rand::{distributions::Alphanumeric, Rng};
-use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE};
+use reqwest::header::{HeaderValue, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
 use url::Url;
 
@@ -70,22 +69,13 @@ impl Credentials<AuthCodeNotPresent> {
 
 impl Credentials<AuthCodePresent> {
     pub async fn get_access_token(self) -> Result<AccessToken> {
-        let mut headers = HeaderMap::new();
-        headers.insert(
-            CONTENT_TYPE,
-            HeaderValue::from_static("application/x-www-form-urlencoded"),
-        );
-        headers.insert(
-            AUTHORIZATION,
-            HeaderValue::from_str(&format!(
-                "Basic {}",
-                b64.encode(format!("{}:{}", self.client_id, self.client_secret))
-            ))?,
-        );
-
         let response = reqwest::Client::new()
             .post(ACCESS_TOKEN_BASE_URL)
-            .headers(headers)
+            .basic_auth(self.client_id, Some(self.client_secret))
+            .header(
+                CONTENT_TYPE,
+                HeaderValue::from_static("application/x-www-form-urlencoded"),
+            )
             .form(&[
                 ("code", self.authorization_code.0),
                 ("redirect_uri", format!("http://localhost:{PORT}/callback")),
