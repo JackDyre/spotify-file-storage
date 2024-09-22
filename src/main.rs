@@ -1,5 +1,5 @@
 use sfs::auth::{authenticate, Credentials};
-use sfs::request::*;
+use sfs::spotify::id::*;
 
 use anyhow::Result;
 
@@ -9,7 +9,11 @@ async fn main() -> Result<()> {
 
     let token = authenticate(creds).await?;
 
-    let _id = UserID::new(&token).await?;
+    let user_id = UserID::get(&token).await?;
+
+    dbg!(user_id.id());
+    dbg!(user_id.uri());
+    dbg!(user_id.url());
 
     Ok(())
 }
