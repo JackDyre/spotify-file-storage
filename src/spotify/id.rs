@@ -57,9 +57,8 @@ impl<R: ResourceTypes> GenericResourceIdentifier<R> {
         ensure!(IDENTIFIER_REGEX_SET.is_match(&identifier));
 
         let id = match ID_REGEX
-            .captures(&identifier)
-            .and_then(|c| c.get(0))
-            .map(|c| c.as_str().to_string())
+            .find(&identifier)
+            .map(|mat| mat.as_str().to_string())
         {
             Some(i) => i,
             None => bail!("Invalid identifier"),
