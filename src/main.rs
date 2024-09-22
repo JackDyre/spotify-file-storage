@@ -1,5 +1,5 @@
 use sfs::auth::{authenticate, Credentials};
-use sfs::request::UserID;
+use sfs::request::*;
 
 use anyhow::Result;
 
@@ -9,7 +9,7 @@ async fn main() -> Result<()> {
 
     let token = authenticate(creds).await?;
 
-    let id = UserID::new(&token).await?;
+    let _id = UserID::new(&token).await?;
 
     Ok(())
 }
