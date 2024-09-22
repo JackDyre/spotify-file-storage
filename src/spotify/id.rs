@@ -1,7 +1,8 @@
 use anyhow::{bail, ensure, Result};
-use regex::Regex;
+use regex::{Regex, RegexSet};
 use reqwest::header::{HeaderValue, AUTHORIZATION};
 use std::marker::PhantomData;
+use std::sync::LazyLock;
 
 use crate::auth::AccessToken;
 
@@ -9,9 +10,16 @@ pub type UserID = GenericResourceIdentifier<User>;
 pub type PlaylistID = GenericResourceIdentifier<Playlist>;
 pub type TrackID = GenericResourceIdentifier<Track>;
 
-const ID_REGEX: &'static str = r"^[0-9A-Za-z]{22,28}$";
-const URI_REGEX: &'static str = r"^spotify:(track|playlist|user):([0-9A-Za-z]{22,28})$";
-const URL_REGEX: &'static str = r"^https:\/\/open\.spotify\.com\/(track|playlist|user)\/([0-9A-Za-z]{22,28})(\?si=[0-9A-Za-z]+)?$";
+static IDENTIFIER_REGEX_SET: LazyLock<RegexSet> = LazyLock::new(|| {
+    RegexSet::new(vec![
+        r"^[0-9A-Za-z]{22,28}$",
+        r"^spotify:(track|playlist|user):([0-9A-Za-z]{22,28})$",
+        r"^https:\/\/open\.spotify\.com\/(track|playlist|user)\/([0-9A-Za-z]{22,28})(\?si=[0-9A-Za-z]+)?$",
+    ]).expect("ID validitation regexes should be valid")
+});
+static ID_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"[0-9A-Za-z]{22,28}").expect("ID validitation regexes should be valid")
+});
 
 pub trait ResourceTypes {
     const NAME: &'static str;
@@ -43,16 +51,9 @@ where
 
 impl<R: ResourceTypes> GenericResourceIdentifier<R> {
     pub fn new(identifier: &str) -> Result<GenericResourceIdentifier<R>> {
-        ensure!(vec![ID_REGEX, URI_REGEX, URL_REGEX]
-            .into_iter()
-            .try_fold(false, |acc, x| {
-                match Regex::new(x) {
-                    Ok(r) => Ok(acc || r.is_match(&identifier)),
-                    Err(e) => Err(e),
-                }
-            })?);
+        ensure!(IDENTIFIER_REGEX_SET.is_match(&identifier));
 
-        let id = match Regex::new(r"[0-9A-Za-z]{22,28}")?
+        let id = match ID_REGEX
             .captures(&identifier)
             .and_then(|c| c.get(0))
             .map(|c| c.as_str().to_string())
@@ -95,14 +96,8 @@ impl UserID {
                 .await?,
         )?;
 
-        dbg!(&response);
-
         match response.get("uri") {
-            Some(i) => {
-                let id = i.as_str().unwrap();
-                println!("{id}");
-                Ok(UserID::new(id)?)
-            }
+            Some(i) => Ok(UserID::new(i.as_str().unwrap())?),
             None => bail!("Unable to get user ID"),
         }
     }
