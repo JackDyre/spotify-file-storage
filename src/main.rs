@@ -11,7 +11,5 @@ async fn main() -> Result<()> {
 
     let id = UserID::new(&token).await?;
 
-    dbg!(id);
-
     Ok(())
 }
