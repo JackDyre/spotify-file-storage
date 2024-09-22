@@ -4,7 +4,7 @@ use reqwest::header::{HeaderValue, AUTHORIZATION};
 use std::marker::PhantomData;
 use std::sync::LazyLock;
 
-use crate::auth::AccessToken;
+use crate::spotify::auth::AccessToken;
 
 pub type UserID = GenericResourceIdentifier<User>;
 pub type PlaylistID = GenericResourceIdentifier<Playlist>;
@@ -25,16 +25,19 @@ pub trait ResourceTypes {
     const NAME: &'static str;
 }
 #[derive(Debug)]
+#[doc(hidden)]
 pub struct Track;
 impl ResourceTypes for Track {
     const NAME: &'static str = "track";
 }
 #[derive(Debug)]
+#[doc(hidden)]
 pub struct Playlist;
 impl ResourceTypes for Playlist {
     const NAME: &'static str = "playlist";
 }
 #[derive(Debug)]
+#[doc(hidden)]
 pub struct User;
 impl ResourceTypes for User {
     const NAME: &'static str = "user";

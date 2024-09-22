@@ -1,4 +1,4 @@
-use sfs::auth::{authenticate, Credentials};
+use sfs::spotify::auth::{authenticate, Credentials};
 use sfs::spotify::id::*;
 
 use anyhow::Result;
