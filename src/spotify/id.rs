@@ -1,4 +1,4 @@
-use anyhow::{bail, ensure, Result};
+use anyhow::{anyhow, bail, ensure, Result};
 use regex::{Regex, RegexSet};
 use reqwest::header::{HeaderValue, AUTHORIZATION};
 use std::marker::PhantomData;
@@ -100,7 +100,9 @@ impl UserID {
         )?;
 
         match response.get("uri") {
-            Some(i) => Ok(UserID::new(i.as_str().unwrap())?),
+            Some(i) => Ok(UserID::new(
+                i.as_str().ok_or_else(|| anyhow!("Unable to get user ID"))?,
+            )?),
             None => bail!("Unable to get user ID"),
         }
     }
