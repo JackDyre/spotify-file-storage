@@ -1,17 +1,5 @@
-use sfs::spotify::{
-    auth::{authenticate, Credentials},
-    Spotify,
-};
+use error_stack::{Result, ResultExt};
 
-use anyhow::Result;
-
-#[tokio::main]
-async fn main() -> Result<()> {
-    let token = authenticate(Credentials::from_env()?).await?;
-
-    let spotify = Spotify::new(token).await?;
-
-    dbg!(spotify);
-
-    Ok(())
+fn main() -> Result<(), &'static str> {
+    todo!();
 }

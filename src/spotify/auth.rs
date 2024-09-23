@@ -1,16 +1,15 @@
-use std::env;
-
-use anyhow::{bail, Result};
+use error_stack::ResultExt;
 use rand::{distributions::Alphanumeric, Rng};
 use reqwest::header::{HeaderValue, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
+use std::env;
 use url::Url;
 
 const PORT: i32 = 8888;
 const AUTHORIZATION_BASE_URL: &str = "https://accounts.spotify.com/authorize";
 const ACCESS_TOKEN_BASE_URL: &str = "https://accounts.spotify.com/api/token";
 
-pub async fn authenticate(creds: Credentials<AuthCodeNotPresent>) -> Result<AccessToken> {
+pub async fn authenticate(creds: Credentials<AuthCodeNotPresent>) -> anyhow::Result<AccessToken> {
     creds.get_auth_code()?.get_access_token().await
 }
 
@@ -45,14 +44,14 @@ impl Credentials<AuthCodeNotPresent> {
         }
     }
 
-    pub fn from_env() -> Result<Credentials<AuthCodeNotPresent>> {
+    pub fn from_env() -> anyhow::Result<Credentials<AuthCodeNotPresent>> {
         dotenvy::dotenv()?;
         let client_id = env::var("SFS_CLIENT_ID")?;
         let client_secret = env::var("SFS_CLIENT_SECRET")?;
         Ok(Credentials::new(&client_id, &client_secret))
     }
 
-    pub fn get_auth_code(self) -> Result<Credentials<AuthCodePresent>> {
+    pub fn get_auth_code(self) -> anyhow::Result<Credentials<AuthCodePresent>> {
         let auth_code = CallbackCaptureServer::new(&self)?.capture()?;
         Ok(self.add_auth_code(auth_code))
     }
@@ -68,7 +67,7 @@ impl Credentials<AuthCodeNotPresent> {
 }
 
 impl Credentials<AuthCodePresent> {
-    pub async fn get_access_token(self) -> Result<AccessToken> {
+    pub async fn get_access_token(self) -> anyhow::Result<AccessToken> {
         let response = reqwest::Client::new()
             .post(ACCESS_TOKEN_BASE_URL)
             .basic_auth(self.client_id, Some(self.client_secret))
@@ -132,16 +131,16 @@ struct AuthCodeCallback {
 }
 
 impl AuthCodeCallback {
-    fn parse_for_code(self, state: String) -> Result<String> {
+    fn parse_for_code(self, state: String) -> anyhow::Result<String> {
         if self.error.is_some() {
-            bail!("Authorization callback returned an error")
+            anyhow::bail!("Authorization callback returned an error")
         }
         if state != self.state {
-            bail!("State sent to Spotify does not match the one returned")
+            anyhow::bail!("State sent to Spotify does not match the one returned")
         }
         let code = match self.code {
             Some(c) => c,
-            None => bail!("Auth code not present in callback"),
+            None => anyhow::bail!("Auth code not present in callback"),
         };
         Ok(code)
     }
@@ -154,10 +153,10 @@ struct CallbackCaptureServer {
 }
 
 impl CallbackCaptureServer {
-    fn new(creds: &Credentials<AuthCodeNotPresent>) -> Result<CallbackCaptureServer> {
+    fn new(creds: &Credentials<AuthCodeNotPresent>) -> anyhow::Result<CallbackCaptureServer> {
         let server = match tiny_http::Server::http(format!("0.0.0.0:{PORT}")) {
             Ok(s) => s,
-            Err(e) => bail!(e),
+            Err(e) => anyhow::bail!(e),
         };
         let prompt_url_params = serde_urlencoded::to_string(AuthCodeRequest::new(&creds))?;
         Ok(CallbackCaptureServer {
@@ -168,14 +167,14 @@ impl CallbackCaptureServer {
         })
     }
 
-    fn capture(self) -> Result<String> {
+    fn capture(self) -> anyhow::Result<String> {
         webbrowser::open(&self.prompt_url)?;
         let request = self.server.recv()?;
 
         let callback_url = if request.url().starts_with("/callback?") {
             &request.url()[10..]
         } else {
-            bail!("The captured callback url was malformed")
+            anyhow::bail!("The captured callback url was malformed")
         };
 
         let callback = serde_urlencoded::from_str::<AuthCodeCallback>(callback_url)?;
@@ -194,6 +193,12 @@ impl CallbackCaptureServer {
 
         Ok(code)
     }
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum SpotifyAuthError {
+    #[error("{0}")]
+    Error(&'static str),
 }
 
 mod private {
