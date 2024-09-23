@@ -1,19 +1,17 @@
-use sfs::spotify::auth::{authenticate, Credentials};
-use sfs::spotify::id::*;
+use sfs::spotify::{
+    auth::{authenticate, Credentials},
+    Spotify,
+};
 
 use anyhow::Result;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let creds = Credentials::from_env()?;
+    let token = authenticate(Credentials::from_env()?).await?;
 
-    let token = authenticate(creds).await?;
+    let spotify = Spotify::new(token).await?;
 
-    let user_id = UserID::get(&token).await?;
-
-    dbg!(user_id.id());
-    dbg!(user_id.uri());
-    dbg!(user_id.url());
+    dbg!(spotify);
 
     Ok(())
 }
