@@ -1,4 +1,4 @@
-use error_stack::ResultExt;
+use error_stack::{bail, report, Result, ResultExt};
 use rand::{distributions::Alphanumeric, Rng};
 use reqwest::header::{HeaderValue, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
@@ -131,16 +131,25 @@ struct AuthCodeCallback {
 }
 
 impl AuthCodeCallback {
-    fn parse_for_code(self, state: String) -> anyhow::Result<String> {
+    fn parse_for_code(self, state: String) -> Result<String, SpotifyAuthError> {
         if self.error.is_some() {
-            anyhow::bail!("Authorization callback returned an error")
+            bail!(report!(SpotifyAuthError::Error(
+                "Authorization callback returned an error"
+            ))
+            .attach_printable(self.error.unwrap_or_default()))
         }
         if state != self.state {
-            anyhow::bail!("State sent to Spotify does not match the one returned")
+            bail!(report!(SpotifyAuthError::Error(
+                "State sent to Spotify does not match the one returned"
+            ))
+            .attach_printable(state)
+            .attach_printable(self.state))
         }
         let code = match self.code {
             Some(c) => c,
-            None => anyhow::bail!("Auth code not present in callback"),
+            None => bail!(report!(SpotifyAuthError::Error(
+                "Auth code not present in callback"
+            ))),
         };
         Ok(code)
     }
@@ -167,29 +176,51 @@ impl CallbackCaptureServer {
         })
     }
 
-    fn capture(self) -> anyhow::Result<String> {
-        webbrowser::open(&self.prompt_url)?;
-        let request = self.server.recv()?;
+    fn capture(self) -> Result<String, SpotifyAuthError> {
+        webbrowser::open(&self.prompt_url).change_context(SpotifyAuthError::Error(
+            "Error opening authorization prompt url",
+        ))?;
+        let request = self.server.recv().change_context(SpotifyAuthError::Error(
+            "Error receiving auth code callback request",
+        ))?;
 
-        let callback_url = if request.url().starts_with("/callback?") {
-            &request.url()[10..]
+        let url = &request.url();
+
+        let callback_url = if url.starts_with("/callback?") {
+            &url.clone()[10..]
         } else {
-            anyhow::bail!("The captured callback url was malformed")
+            bail!(report!(SpotifyAuthError::Error(
+                "Auth code callback url was malformed"
+            ))
+            .attach_printable(url.clone()))
         };
 
-        let callback = serde_urlencoded::from_str::<AuthCodeCallback>(callback_url)?;
+        let callback = serde_urlencoded::from_str::<AuthCodeCallback>(callback_url)
+            .change_context(SpotifyAuthError::Error(
+                "Error while parsing auth code callback",
+            ))
+            .attach_printable(callback_url)?;
 
-        let code = callback.parse_for_code(self.state)?;
+        let code = callback
+            .parse_for_code(self.state)
+            .change_context(SpotifyAuthError::Error(
+                "Error while parsing auth code callback",
+            ))
+            .attach_printable(callback_url)?;
 
-        request.respond(
-            tiny_http::Response::from_string(
-                "<html><body><script>window.close();</script></body></html>",
+        request
+            .respond(
+                tiny_http::Response::from_string(
+                    "<html><body><script>window.close();</script></body></html>",
+                )
+                .with_header(tiny_http::Header {
+                    field: "Content-Type".parse().unwrap(),
+                    value: "text/html".parse().unwrap(),
+                }),
             )
-            .with_header(tiny_http::Header {
-                field: "Content-Type".parse().unwrap(),
-                value: "text/html".parse().unwrap(),
-            }),
-        )?;
+            .change_context(SpotifyAuthError::Error(
+                "Error responding to auth code callback request",
+            ))?;
 
         Ok(code)
     }
