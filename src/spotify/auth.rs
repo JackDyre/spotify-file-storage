@@ -25,9 +25,8 @@ pub async fn authenticate(creds: Credentials<AuthCodeNotPresent>) -> Result<Acce
 pub struct AuthCodeNotPresent;
 pub struct AuthCodePresent(String);
 
-pub trait AuthCodeStates: private::Sealed {}
-impl AuthCodeStates for AuthCodeNotPresent {}
-impl AuthCodeStates for AuthCodePresent {}
+pub trait AuthCodeStates: sealed::SealedAuthCodeStates {}
+impl<T: sealed::SealedAuthCodeStates> AuthCodeStates for T {}
 
 pub struct Credentials<AuthCodeState>
 where
@@ -248,8 +247,8 @@ fn new_error(msg: &'static str) -> SpotifyAuthError {
     SpotifyAuthError::Error(msg)
 }
 
-mod private {
-    pub trait Sealed {}
-    impl Sealed for super::AuthCodeNotPresent {}
-    impl Sealed for super::AuthCodePresent {}
+mod sealed {
+    pub trait SealedAuthCodeStates {}
+    impl SealedAuthCodeStates for super::AuthCodeNotPresent {}
+    impl SealedAuthCodeStates for super::AuthCodePresent {}
 }
